@@ -16,13 +16,5 @@ import type { CreateOverlaysControllerOptions, OverlaysController } from './type
 export function createOverlaysController(
   options: CreateOverlaysControllerOptions = {}
 ): OverlaysController {
-  const autoEnable = options.autoEnable ?? true;
-
-  const controller = inBrowser() ? new BrowserController(options) : new NoopController(autoEnable);
-
-  if (autoEnable) {
-    controller.enable();
-  }
-
-  return controller;
+  return inBrowser() ? new BrowserController(options) : new NoopController();
 }

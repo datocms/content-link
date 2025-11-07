@@ -62,6 +62,7 @@ describe('createOverlaysController', () => {
     `;
 
     const controller = createOverlaysController();
+    controller.enable();
 
     const heroText = document.getElementById('hero-text') as HTMLElement;
     const heroImage = document.getElementById('hero-image') as HTMLImageElement;
@@ -99,6 +100,7 @@ describe('createOverlaysController', () => {
     const decodeSpy = vi.spyOn(decodeModule, 'decodeStega');
 
     const controller = createOverlaysController();
+    controller.enable();
 
     decodeSpy.mockClear();
 
@@ -137,6 +139,7 @@ describe('createOverlaysController', () => {
     const container = document.getElementById('container') as HTMLElement;
 
     const controller = createOverlaysController();
+    controller.enable();
 
     const encoded = vercelStegaCombine('Fresh content', {
       origin: 'datocms.com',
@@ -176,6 +179,7 @@ describe('createOverlaysController', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const controller = createOverlaysController();
+    controller.enable();
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const [message, elementArg] = warnSpy.mock.calls[0];
@@ -206,6 +210,7 @@ describe('createOverlaysController', () => {
     encodedParagraph.textContent = encoded;
 
     const controller = createOverlaysController();
+    controller.enable();
 
     const manual = document.getElementById('manual') as HTMLElement;
     expect(encodedParagraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
@@ -242,6 +247,7 @@ describe('createOverlaysController', () => {
     wrappedImage.getBoundingClientRect = () => createRect(0, 0, 0, 0);
 
     const controller = createOverlaysController();
+    controller.enable();
 
     const textWrapper = document.getElementById('text-wrapper') as HTMLElement;
     const innerSpan = document.getElementById('wrapped') as HTMLElement;
@@ -269,6 +275,7 @@ describe('createOverlaysController', () => {
     document.body.innerHTML = `<h1 id="headline">${firstEncoded}</h1>`;
 
     const controller = createOverlaysController();
+    controller.enable();
 
     const heading = document.getElementById('headline') as HTMLElement;
     expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=content.title');
@@ -299,9 +306,7 @@ describe('createOverlaysController', () => {
 
     document.body.innerHTML = `<p id="content"></p>`;
 
-    const controller = createOverlaysController({
-      autoEnable: false
-    });
+    const controller = createOverlaysController();
 
     expect(controller.isEnabled()).toBe(false);
     expect(controller.isDisposed()).toBe(false);

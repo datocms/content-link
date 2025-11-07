@@ -4,11 +4,11 @@
 
 Click-to-edit overlays for DatoCMS projects. Platform and framework agnostic, two function calls to set it up.
 
-![Usage demo](./docs/usage.gif)
-
 ```bash
 npm install @datocms/content-link
 ```
+
+![Usage demo](./docs/usage.gif)
 
 ## Quick start
 
@@ -31,10 +31,7 @@ const result = await executeQuery(query, {
 ```ts
 import { createOverlaysController } from '@datocms/content-link';
 
-const controller = createOverlaysController();
-
-// The controller is auto-enabled by default
-// Call controller.disable(), controller.enable(), or controller.toggle() as needed
+createOverlaysController().enable();
 ```
 
 That's all you need for the majority of projects! If you see overlays and deep links opening the correct records, your setup is complete!
@@ -55,13 +52,19 @@ const controller = createOverlaysController({
   // Can be a ShadowRoot or a specific container element.
   root: document.getElementById('preview-container'),
 
-  // Optional: when false, the controller starts disabled; call enable() manually.
-  autoEnable: true
+  // Optional: customize the overlay appearance
+  overlayStyle: {
+    borderColor: '#0066ff',
+    borderWidth: '3px',
+    borderRadius: '12px',
+    backgroundColor: 'rgba(0, 102, 255, 0.15)',
+    padding: 10
+  }
 });
 
 // Control & refresh
-controller.disable();   // turn overlays off (keeps controller reusable)
 controller.enable();    // turn overlays on
+controller.disable();   // turn overlays off (keeps controller reusable)
 controller.toggle();    // flip overlays on/off without disposing
 controller.isEnabled(); // check if currently enabled
 controller.isDisposed(); // check if disposed
@@ -73,7 +76,12 @@ Returns a controller to manage overlays and rescans.
 
 **Options:**
 - `root?: ParentNode`: Limit scanning to a specific container (default: `document`)
-- `autoEnable?: boolean`: Auto-enable on creation (default: `true`)
+- `overlayStyle?: OverlayStyle`: Customize the appearance of highlight overlays
+  - `borderColor?: string`: CSS border color (default: `'#ff7751'`)
+  - `borderWidth?: string`: CSS border width (default: `'2px'`)
+  - `borderRadius?: string`: CSS border radius (default: `'8px'`)
+  - `backgroundColor?: string`: CSS background color with opacity (default: `'rgba(255, 119, 81, 0.12)'`)
+  - `padding?: number`: Padding around highlighted elements in pixels (default: `8`)
 
 **Controller methods:**
 - `enable()`: Turn overlays on

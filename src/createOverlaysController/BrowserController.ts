@@ -8,6 +8,7 @@ import { createScheduler } from './scheduler.js';
 import { addStamps, clearStamps } from './stamp/index.js';
 import type {
   CreateOverlaysControllerOptions,
+  OverlayStyle,
   OverlaysController,
   StampSummary,
   State
@@ -18,6 +19,7 @@ export class BrowserController implements OverlaysController {
   private readonly doc: Document;
   private readonly pending = new Set<ParentNode>();
   private readonly scheduleStamp: () => void;
+  private readonly overlayStyle?: OverlayStyle;
 
   private observer: MutationObserver | null = null;
   private disposeOverlay: (() => void) | null = null;
@@ -28,6 +30,7 @@ export class BrowserController implements OverlaysController {
   constructor(options: CreateOverlaysControllerOptions) {
     this.root = options.root ?? document;
     this.doc = this.ensureDocument(this.root);
+    this.overlayStyle = options.overlayStyle;
     this.scheduleStamp = createScheduler(() => this.runStamp());
   }
 
@@ -122,7 +125,7 @@ export class BrowserController implements OverlaysController {
       attributes: true,
       attributeFilter: ['alt']
     });
-    this.disposeOverlay = setupOverlay(this.doc);
+    this.disposeOverlay = setupOverlay(this.doc, this.overlayStyle);
   }
 
   /** Reverse everything created in `attach`, leaving the DOM untouched. */

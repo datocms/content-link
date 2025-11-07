@@ -8,12 +8,8 @@ import type { OverlaysController } from './types.js';
  * Keeps the API surface consistent without touching the DOM.
  */
 export class NoopController implements OverlaysController {
-  private enabled: boolean;
+  private enabled = false;
   private disposed = false;
-
-  constructor(autoEnable: boolean) {
-    this.enabled = autoEnable;
-  }
 
   enable(): void {
     if (this.disposed) {

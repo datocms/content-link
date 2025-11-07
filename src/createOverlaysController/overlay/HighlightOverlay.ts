@@ -1,16 +1,38 @@
+import type { OverlayStyle } from '../types.js';
 /**
  * Lightweight view layer that draws a fixed-position rectangle around the
  * active editable element. Keeps all DOM manipulation in one place.
  */
-import { OVERLAY_PADDING, OVERLAY_Z_INDEX } from './constants.js';
+import {
+  DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_BORDER_COLOR,
+  DEFAULT_BORDER_RADIUS,
+  DEFAULT_BORDER_WIDTH,
+  DEFAULT_OVERLAY_PADDING,
+  OVERLAY_Z_INDEX
+} from './constants.js';
 
 export class HighlightOverlay {
   private root: HTMLDivElement | null = null;
   private visible = false;
   private prevCursor: string | null = null;
-  private readonly padding = OVERLAY_PADDING;
+  private readonly padding: number;
+  private readonly borderColor: string;
+  private readonly borderWidth: string;
+  private readonly borderRadius: string;
+  private readonly backgroundColor: string;
 
-  constructor(private readonly doc: Document) {}
+  constructor(
+    private readonly doc: Document,
+    style?: OverlayStyle
+  ) {
+    // Merge provided style options with defaults
+    this.padding = style?.padding ?? DEFAULT_OVERLAY_PADDING;
+    this.borderColor = style?.borderColor ?? DEFAULT_BORDER_COLOR;
+    this.borderWidth = style?.borderWidth ?? DEFAULT_BORDER_WIDTH;
+    this.borderRadius = style?.borderRadius ?? DEFAULT_BORDER_RADIUS;
+    this.backgroundColor = style?.backgroundColor ?? DEFAULT_BACKGROUND_COLOR;
+  }
 
   /** Position and display the overlay around the supplied element. */
   show(el: Element): void {
@@ -79,9 +101,9 @@ export class HighlightOverlay {
     root.style.left = '0';
     root.style.width = '0';
     root.style.height = '0';
-    root.style.border = '2px solid #ff7751';
-    root.style.borderRadius = '8px';
-    root.style.background = 'rgba(255, 119, 81, 0.12)';
+    root.style.border = `${this.borderWidth} solid ${this.borderColor}`;
+    root.style.borderRadius = this.borderRadius;
+    root.style.background = this.backgroundColor;
     root.style.boxSizing = 'border-box';
     root.style.pointerEvents = 'none';
     root.style.cursor = 'pointer';

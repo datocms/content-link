@@ -1,3 +1,4 @@
+import type { OverlayStyle } from '../types.js';
 /**
  * Overlay rendering logic: highlights editable regions under the pointer and
  * opens the editor when clicked. Lives separately from the controller so it
@@ -34,13 +35,13 @@ const isKeyboardEvent = (event: Event): event is KeyboardEvent => {
  * and wire up the pointer/focus listeners required to drive it.
  * Returns a disposer that removes all listeners and DOM elements.
  */
-export function setupOverlay(doc?: Document): () => void {
+export function setupOverlay(doc?: Document, style?: OverlayStyle): () => void {
   const resolvedDoc = doc ?? (typeof document !== 'undefined' ? document : null);
   if (!resolvedDoc) {
     return () => void 0;
   }
 
-  const overlay = new HighlightOverlay(resolvedDoc);
+  const overlay = new HighlightOverlay(resolvedDoc, style);
   let current: Target | null = null;
   let resizeObserver: ResizeObserver | null = null;
   const view = resolvedDoc.defaultView ?? (typeof window !== 'undefined' ? window : null);
