@@ -1,13 +1,13 @@
 # DatoCMS Content Link
 
-[![npm version](https://img.shields.io/npm/v/datocms-visual-editing.svg)](https://www.npmjs.com/package/datocms-visual-editing) [![License: MIT](https://img.shields.io/npm/l/datocms-visual-editing.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@datocms/content-link.svg)](https://www.npmjs.com/package/@datocms/content-link) [![License: MIT](https://img.shields.io/npm/l/@datocms/content-link.svg)](./LICENSE)
 
 Click-to-edit overlays for DatoCMS projects. Platform and framework agnostic, two function calls to set it up.
 
 ![Usage demo](./docs/usage.gif)
 
 ```bash
-npm install datocms-visual-editing
+npm install @datocms/content-link
 ```
 
 ## Quick start
@@ -44,7 +44,7 @@ That's all you need for the majority of projects! If you see overlays and deep l
 ### `createOverlaysController(options?)`
 
 ```ts
-import { createOverlaysController } from 'datocms-visual-editing';
+import { createOverlaysController } from '@datocms/content-link';
 
 // Minimal (no options required)
 const controller = createOverlaysController();
@@ -86,64 +86,10 @@ Returns a controller to manage overlays and rescans.
 
 ---
 
-## Advanced Use-Cases
-
-### Optional button to toggle Visual Editing (React):
-
-```tsx
-'use client';
-import { useEffect, useRef } from 'react';
-import { createOverlaysController, type OverlaysController } from 'datocms-visual-editing';
-
-export function VisualEditingToggleButton() {
-  const controllerRef = useRef<OverlaysController | null>(null);
-
-  useEffect(() => {
-    controllerRef.current = createOverlaysController();
-    return () => controllerRef.current?.dispose();
-  }, []);
-
-  return (
-    <button type="button" onClick={() => controllerRef.current?.toggle()}>
-      Toggle visual editing
-    </button>
-  );
-}
-```
-
-## Using Visual Editing with the Real Time API
-
-Use this only if your preview receives real-time updates via DatoCMS [Real‑time Updates API](https://www.datocms.com/docs/real-time-updates-api). If you render a static snapshot from the [Content Delivery API](https://www.datocms.com/docs/content-delivery-api), you can skip this hook; `createOverlaysController` alone will show overlays on first render, but there will be no live re-scan.
-
-```tsx
-'use client';
-import { useRef } from 'react';
-import { useDatoVisualEditingListen } from 'datocms-visual-editing/react';
-
-function subscribe({ onUpdate }: { onUpdate: () => void }) {
-  const sse = new EventSource('/api/dato/listen');
-  sse.onmessage = () => onUpdate();
-  return () => sse.close();
-}
-
-export function PreviewVisualEditing() {
-  const scopeRef = useRef<HTMLDivElement | null>(null);
-  useDatoVisualEditingListen(subscribe, {
-    controllerOptions: {},
-    scopeRef,
-    initialRefresh: true
-  });
-  return <div ref={scopeRef} />;
-}
-```
-
-- When streaming preview responses or rehydrating, reuse the server-rendered DOM nodes to preserve stega metadata.
-- Mutate text/attributes in place and call `controller.refresh(root?)` after new markup lands, or use `useDatoVisualEditingListen` for automatic refreshes.
-
-### Low-level utilities
+## Low-level utilities
 
 ```ts
-import { decodeStega, stripStega } from 'datocms-visual-editing';
+import { decodeStega, stripStega } from '@datocms/content-link';
 
 // Decode a raw string that may contain stega
 const info = decodeStega(someString);
@@ -176,13 +122,6 @@ const clean = stripStega(someString);
 
 - **No overlays appear**: Ensure your fetch requests include the `X-Visual-Editing` and `X-Base-Editing-Url` headers. The stega-encoded metadata is only included in responses when these headers are present.
 - **Overlays not updating**: Call `controller.refresh()` after DOM changes, or use `useDatoVisualEditingListen` for automatic updates with real-time content.
-
-## Examples & demos
-
-- Next.js App Router example → [examples/nextjs-app-router](./examples/nextjs-app-router/)
-- Plain JS sample → [examples/plain-js](./examples/plain-js/)
-- Payload inspection scripts → [examples/payload-inspection](./examples/payload-inspection/)
-- Ecommerce Website Demo (Visual Editing + Realtime Updates) → [imagesVisualEditing branch](https://github.com/datocms/ecommerce-website-demo/tree/imagesVisualEditing)
 
 ## License
 

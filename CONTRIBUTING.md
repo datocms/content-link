@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving `datocms-visual-editing`! This guide
+Thanks for your interest in improving `@datocms/content-link`! This guide
 outlines the setup required to work on the project and the expectations for
 pull requests.
 

@@ -213,7 +213,7 @@ export class BrowserController implements OverlaysController {
 
     if (firstAfterEnable && combinedSummary.appliedStamps.size === 0) {
       const message =
-        '[datocms-visual-editing] No editable elements were detected after enable(). ' +
+        '[@datocms/content-link] No editable elements were detected after enable(). ' +
         "If you're hydrating/streaming, do not replace the server-rendered nodes that carry stega-encoded data.\n" +
         'reuse the exact DOM and render into it.';
 
