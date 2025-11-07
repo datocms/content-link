@@ -1,7 +1,10 @@
 import { decodeStega, splitStega } from '../../stega/decode.js';
 import { resolveDocument } from '../../utils/dom.js';
 import type { StampSummary } from '../types.js';
-import { AUTOMATIC_STAMP_ATTRIBUTE, EDIT_GROUP_ATTRIBUTE } from './constants.js';
+import {
+  AUTOMATIC_STAMP_ATTRIBUTE,
+  EDIT_GROUP_ATTRIBUTE,
+} from './constants.js';
 
 /**
  * Traverse `root`, decode stega-encoded data, stamp DOM elements with edit URL
@@ -13,7 +16,7 @@ export function addStamps(root: ParentNode): StampSummary {
   if (!doc) {
     return {
       appliedStamps: new Map(),
-      scope: root
+      scope: root,
     };
   }
 
@@ -51,7 +54,7 @@ export function addStamps(root: ParentNode): StampSummary {
 
     const cleanAlt = stampTargetAndReturnClean(
       alt,
-      preferWrapperIfZeroSize(img) ?? resolveTarget(img),
+      resolveTarget(img),
       appliedStamps
     );
 
@@ -62,7 +65,7 @@ export function addStamps(root: ParentNode): StampSummary {
 
   const summary: StampSummary = {
     appliedStamps: appliedStamps,
-    scope: root
+    scope: root,
   };
 
   return summary;
@@ -110,31 +113,20 @@ function stampTargetAndReturnClean(
 }
 
 // Log when two stega-encoded payloads map to the same element in a single pass, which would break deep linking.
-function warnCollision(el: Element, originalUrl: string, nextUrl: string): void {
-  const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${nextUrl}. Wrap each encoded block in its own element (for example by adding data-datocms-edit-target).`;
+function warnCollision(
+  el: Element,
+  originalUrl: string,
+  nextUrl: string
+): void {
+  const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${nextUrl}. Wrap each encoded block in its own element (for example by adding ${EDIT_GROUP_ATTRIBUTE}).`;
 
   console.warn(message, el);
 }
 
-// If the site provided a wrapper via data-datocms-edit-target we stamp that instead.
+// If the site provided a group, we stamp that instead.
 function resolveTarget(start: Element): Element {
   const wrapper = start.closest<HTMLElement>(`[${EDIT_GROUP_ATTRIBUTE}]`);
   return wrapper ?? start;
-}
-
-// Invisible images often live inside wrappers that have layout; prefer those.
-function preferWrapperIfZeroSize(img: HTMLImageElement): Element | null {
-  if (typeof img.getBoundingClientRect !== 'function') {
-    return null;
-  }
-  const rect = img.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) {
-    const wrapper = img.closest<HTMLElement>(`[${EDIT_GROUP_ATTRIBUTE}]`);
-    if (wrapper) {
-      return wrapper;
-    }
-  }
-  return null;
 }
 
 /**
@@ -142,7 +134,9 @@ function preferWrapperIfZeroSize(img: HTMLImageElement): Element | null {
  * disabling the controller or running in environments where overlays are off.
  */
 export function clearStamps(root: ParentNode): void {
-  const nodes = root.querySelectorAll<HTMLElement>(`[${AUTOMATIC_STAMP_ATTRIBUTE}]`);
+  const nodes = root.querySelectorAll<HTMLElement>(
+    `[${AUTOMATIC_STAMP_ATTRIBUTE}]`
+  );
   for (const el of nodes) {
     el.removeAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
   }
