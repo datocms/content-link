@@ -3,7 +3,7 @@
  * These form the contract between the library and consumers.
  */
 
-export type EnableDatoVisualEditingOptions = {
+export type CreateOverlaysControllerOptions = {
   root?: ParentNode;
   autoEnable?: boolean;
 };
@@ -13,7 +13,7 @@ export type StampSummary = {
   appliedStamps: Map<Element, string>;
 };
 
-export type Controller = {
+export type OverlaysController = {
   enable(): void;
   disable(): void;
   toggle(): void;

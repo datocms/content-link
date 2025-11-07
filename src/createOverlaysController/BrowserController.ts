@@ -6,9 +6,14 @@ import { EVENT_READY, EVENT_STAMPED, EVENT_STATE } from './events/constants.js';
 import { setupOverlay } from './overlay/setup.js';
 import { createScheduler } from './scheduler.js';
 import { addStamps, clearStamps } from './stamp/index.js';
-import type { Controller, EnableDatoVisualEditingOptions, StampSummary, State } from './types.js';
+import type {
+  CreateOverlaysControllerOptions,
+  OverlaysController,
+  StampSummary,
+  State
+} from './types.js';
 
-export class BrowserController implements Controller {
+export class BrowserController implements OverlaysController {
   private readonly root: ParentNode;
   private readonly doc: Document;
   private readonly pending = new Set<ParentNode>();
@@ -20,7 +25,7 @@ export class BrowserController implements Controller {
   private disposed = false;
   private readyEmitted = false;
 
-  constructor(options: EnableDatoVisualEditingOptions) {
+  constructor(options: CreateOverlaysControllerOptions) {
     this.root = options.root ?? document;
     this.doc = this.ensureDocument(this.root);
     this.scheduleStamp = createScheduler(() => this.runStamp());
@@ -156,14 +161,14 @@ export class BrowserController implements Controller {
         hasChanges = true;
       } else if (mutation.type === 'childList') {
         this.pending.add(mutation.target as ParentNode);
-        mutation.addedNodes.forEach((node) => {
+        for (const node of mutation.addedNodes) {
           if (
             node.nodeType === Node.ELEMENT_NODE ||
             node.nodeType === Node.DOCUMENT_FRAGMENT_NODE
           ) {
             this.pending.add(node as ParentNode);
           }
-        });
+        }
         hasChanges = true;
       }
     }

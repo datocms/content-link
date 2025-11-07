@@ -23,9 +23,10 @@ export function addStamps(root: ParentNode): StampSummary {
   // First pass: walk text nodes and process stega-encoded content
   const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 
-  let node: Node | null;
-  while ((node = walker.nextNode())) {
+  let node: Node | null = walker.nextNode();
+  while (node) {
     if (!(node instanceof Text)) {
+      node = walker.nextNode();
       continue;
     }
     const value = node.nodeValue ?? '';
@@ -40,10 +41,12 @@ export function addStamps(root: ParentNode): StampSummary {
     if (cleanValue !== undefined) {
       node.nodeValue = cleanValue;
     }
+
+    node = walker.nextNode();
   }
 
   // Second pass: inspect image alts, since they are not part of the text walker.
-  root.querySelectorAll<HTMLImageElement>('img[alt]').forEach((img) => {
+  for (const img of root.querySelectorAll<HTMLImageElement>('img[alt]')) {
     const alt = img.getAttribute('alt');
 
     const cleanAlt = stampTargetAndReturnClean(
@@ -55,7 +58,7 @@ export function addStamps(root: ParentNode): StampSummary {
     if (cleanAlt !== undefined) {
       img.setAttribute('alt', cleanAlt);
     }
-  });
+  }
 
   const summary: StampSummary = {
     appliedStamps: appliedStamps,
@@ -108,10 +111,7 @@ function stampTargetAndReturnClean(
 
 // Log when two stega-encoded payloads map to the same element in a single pass, which would break deep linking.
 function warnCollision(el: Element, originalUrl: string, nextUrl: string): void {
-  const message =
-    '[datocms-visual-editing] Multiple stega-encoded payloads resolved to the same DOM element. ' +
-    `Previous URL: ${originalUrl}. Incoming URL: ${nextUrl}. ` +
-    'Wrap each encoded block in its own element (for example by adding data-datocms-edit-target).';
+  const message = `[datocms-visual-editing] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${nextUrl}. Wrap each encoded block in its own element (for example by adding data-datocms-edit-target).`;
 
   console.warn(message, el);
 }
@@ -143,7 +143,7 @@ function preferWrapperIfZeroSize(img: HTMLImageElement): Element | null {
  */
 export function clearStamps(root: ParentNode): void {
   const nodes = root.querySelectorAll<HTMLElement>(`[${AUTOMATIC_STAMP_ATTRIBUTE}]`);
-  nodes.forEach((el) => {
+  for (const el of nodes) {
     el.removeAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
-  });
+  }
 }

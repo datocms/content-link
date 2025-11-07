@@ -5,24 +5,24 @@
  */
 import { inBrowser } from '../utils/dom.js';
 import { BrowserController } from './BrowserController.js';
-import { createNoopController } from './createNoopController.js';
-import type { Controller, EnableDatoVisualEditingOptions } from './types.js';
+import { NoopController } from './NoopController.js';
+import type { CreateOverlaysControllerOptions, OverlaysController } from './types.js';
 
 /**
  * Boot the visual-editing runtime. When executed in a browser it returns a live
  * controller; on the server we hand back a no-op implementation so callers
  * don't have to guard their usage.
  */
-export function enableDatoVisualEditing(options: EnableDatoVisualEditingOptions = {}): Controller {
+export function createOverlaysController(
+  options: CreateOverlaysControllerOptions = {}
+): OverlaysController {
   const autoEnable = options.autoEnable ?? true;
 
-  if (!inBrowser()) {
-    return createNoopController(autoEnable);
-  }
+  const controller = inBrowser() ? new BrowserController(options) : new NoopController(autoEnable);
 
-  const controller = new BrowserController(options);
   if (autoEnable) {
     controller.enable();
   }
+
   return controller;
 }

@@ -79,12 +79,10 @@ export function setupOverlay(doc?: Document): () => void {
 
   // Update the highlighted element and manage resize observation lifecycle.
   const setCurrent = (next: Target | null) => {
-    if (next && !next.el.isConnected) {
-      next = null;
-    }
+    const nextTarget = next && !next.el.isConnected ? null : next;
 
-    const sameTarget = current?.el === next?.el && current?.editUrl === next?.editUrl;
-    current = next;
+    const sameTarget = current?.el === nextTarget?.el && current?.editUrl === nextTarget?.editUrl;
+    current = nextTarget;
 
     if (!current) {
       overlay.hide();
@@ -227,14 +225,14 @@ export function setupOverlay(doc?: Document): () => void {
     });
   }
 
-  listeners.forEach(({ target, type, handler, options }) => {
+  for (const { target, type, handler, options } of listeners) {
     target.addEventListener(type, handler, options ?? false);
-  });
+  }
 
   return () => {
-    listeners.forEach(({ target, type, handler, options }) => {
+    for (const { target, type, handler, options } of listeners) {
       target.removeEventListener(type, handler, options ?? false);
-    });
+    }
     if (resizeObserver) {
       resizeObserver.disconnect();
       resizeObserver = null;

@@ -5,7 +5,7 @@
  * into the strongly typed structure consumed by the rest of the SDK.
  */
 import { vercelStegaDecode, vercelStegaSplit } from '@vercel/stega';
-import { DecodedInfo, isDecodedInfo } from './types.js';
+import { type DecodedInfo, isDecodedInfo } from './types.js';
 
 export function splitStega(input: string): ReturnType<typeof vercelStegaSplit> {
   return vercelStegaSplit(input);

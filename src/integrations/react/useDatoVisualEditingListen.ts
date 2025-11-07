@@ -2,12 +2,12 @@
  * React hook that wires a subscription (typically to a CMS client) into the
  * visual-editing controller. Whenever the subscriber emits, we refresh overlays.
  */
-import { useEffect, useRef, type RefObject } from 'react';
-import { enableDatoVisualEditing } from '../../enableDatoVisualEditing/index.js';
+import { type RefObject, useEffect, useRef } from 'react';
+import { createOverlaysController } from '../../createOverlaysController/index.js';
 import type {
-  Controller,
-  EnableDatoVisualEditingOptions
-} from '../../enableDatoVisualEditing/types.js';
+  CreateOverlaysControllerOptions,
+  OverlaysController
+} from '../../createOverlaysController/types.js';
 import { inBrowser } from '../../utils/dom.js';
 
 export type ListenSubscribe = (handlers: {
@@ -16,8 +16,8 @@ export type ListenSubscribe = (handlers: {
 }) => () => void;
 
 export type UseDatoVisualEditingListenOptions = {
-  controller?: Controller;
-  controllerOptions?: EnableDatoVisualEditingOptions;
+  controller?: OverlaysController;
+  controllerOptions?: CreateOverlaysControllerOptions;
   scopeRef?: RefObject<ParentNode | null>;
   initialRefresh?: boolean;
   onError?: (err: unknown) => void;
@@ -31,7 +31,7 @@ export function useDatoVisualEditingListen(
   subscribe: ListenSubscribe,
   options?: UseDatoVisualEditingListenOptions
 ): void {
-  const internalControllerRef = useRef<Controller | null>(null);
+  const internalControllerRef = useRef<OverlaysController | null>(null);
   const warnedMissingOptionsRef = useRef(false);
 
   const externalController = options?.controller ?? null;
@@ -60,7 +60,7 @@ export function useDatoVisualEditingListen(
         }
         return;
       }
-      controller = enableDatoVisualEditing(controllerOptions);
+      controller = createOverlaysController(controllerOptions);
       internalControllerRef.current = controller;
       disposeController = () => {
         internalControllerRef.current?.dispose();
