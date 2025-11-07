@@ -114,6 +114,33 @@ To provide a better editing experience, we recommend wrapping your structured te
 
 This way, users can click anywhere within the structured text content to edit it, rather than having to precisely target a small span element.
 
+### Manual overlays with `data-datocms-edit-url`
+
+For text-based fields (single-line text, structured text, markdown), the DatoCMS API automatically embeds stega-encoded information, which this library detects to create overlays. However, non-text fields like booleans, numbers, dates, and JSON cannot contain stega encoding.
+
+For these cases, use the `data-datocms-edit-url` attribute to manually specify the edit URL. The recommended approach is to use the `_editingUrl` field available on all records:
+
+```graphql
+query {
+  product {
+    id
+    price
+    isActive
+    _editingUrl
+  }
+}
+```
+
+Then add the attribute to your element:
+
+```tsx
+<span data-datocms-edit-url={product._editingUrl}>
+  ${product.price}
+</span>
+```
+
+This ensures the URL format is always correct and adapts automatically to any future changes.
+
 ---
 
 ## Low-level utilities
