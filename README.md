@@ -60,10 +60,10 @@ Optional button to toggle Visual Editing (React):
 ```tsx
 'use client';
 import { useEffect, useRef } from 'react';
-import { enableDatoVisualEditing, type VisualEditingController } from 'datocms-visual-editing';
+import { enableDatoVisualEditing, type Controller } from 'datocms-visual-editing';
 
 export function VisualEditingToggleButton() {
-  const controllerRef = useRef<VisualEditingController | null>(null);
+  const controllerRef = useRef<Controller | null>(null);
 
   useEffect(() => {
     controllerRef.current = enableDatoVisualEditing({
@@ -115,7 +115,7 @@ export function PreviewVisualEditing() {
 
 ## API & attributes: prototypes and their functions
 
-### enableDatoVisualEditing(options): VisualEditingController
+### enableDatoVisualEditing(options): Controller
 
 ```ts
 import { enableDatoVisualEditing } from 'datocms-visual-editing';
@@ -147,7 +147,7 @@ const controller2 = enableDatoVisualEditing({
   // Optional: customize the edit URL per payload. Return a string to override,
   // or return null to skip stamping that element entirely.
   resolveEditUrl: (info, { baseEditingUrl }) => {
-    return info.editUrl ?? `${baseEditingUrl}/items/${info.itemId}`;
+    return info.href ?? `${baseEditingUrl}/items/${info.itemId}`;
   }
 });
 
