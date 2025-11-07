@@ -217,8 +217,8 @@ export class BrowserController implements OverlaysController {
     if (firstAfterEnable && combinedSummary.appliedStamps.size === 0) {
       const message =
         '[@datocms/content-link] No editable elements were detected after enable(). ' +
-        "If you're hydrating/streaming, do not replace the server-rendered nodes that carry stega-encoded data.\n" +
-        'reuse the exact DOM and render into it.';
+        'Make sure that Content Link headers are enabled in your GraphQL requests! ' +
+        "If you're hydrating/streaming, do not replace the server-rendered nodes that carry stega-encoded data: reuse the same DOM element!";
 
       console.warn(message);
     }

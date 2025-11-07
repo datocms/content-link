@@ -94,6 +94,28 @@ Returns a controller to manage overlays and rescans.
 
 ---
 
+## Advanced usage
+
+### Edit groups with `data-datocms-edit-group`
+
+In some cases, you may want to make a larger area clickable than the specific element containing the stega-encoded information. You can achieve this by adding the `data-datocms-edit-group` attribute to a parent element.
+
+**Structured text fields**
+
+This attribute is particularly useful when rendering **Structured Text** fields. The DatoCMS GraphQL CDA encodes stega information within a specific `span` node inside the structured text content. This means that by default, only that particular span would be clickable to open the editor.
+
+To provide a better editing experience, we recommend wrapping your structured text rendering component with a container that has the `data-datocms-edit-group` attribute. This makes the entire structured text area clickable:
+
+```tsx
+<div data-datocms-edit-group>
+  <StructuredText data={content.structuredTextField} />
+</div>
+```
+
+This way, users can click anywhere within the structured text content to edit it, rather than having to precisely target a small span element.
+
+---
+
 ## Low-level utilities
 
 ```ts
