@@ -10,7 +10,14 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE", "LICENSES.md", "CHANGELOG.md", "docs/usage.gif"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "LICENSES.md",
+    "CHANGELOG.md",
+    "docs/usage.gif"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -49,6 +56,7 @@
     "@vitest/coverage-v8": "^1.6.0",
     "dotenv": "^16.4.5",
     "jsdom": "^24.0.0",
+    "np": "^10.2.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.5.4",
     "vitest": "^1.6.0"
