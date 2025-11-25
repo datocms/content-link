@@ -1,4 +1,4 @@
-import type { OverlayStyle } from '../types.js';
+import type { ClickToEditStyle } from '../types.js';
 /**
  * Lightweight view layer that draws a fixed-position rectangle around the
  * active editable element. Keeps all DOM manipulation in one place.
@@ -24,7 +24,7 @@ export class HighlightOverlay {
 
   constructor(
     private readonly doc: Document,
-    style?: OverlayStyle
+    style?: ClickToEditStyle
   ) {
     // Merge provided style options with defaults
     this.padding = style?.padding ?? DEFAULT_OVERLAY_PADDING;

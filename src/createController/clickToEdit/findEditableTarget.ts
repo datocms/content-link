@@ -2,7 +2,7 @@
  * Resolve which element should receive the overlay highlight when the pointer
  * hovers over the page. Simple wrapper, but kept isolated for testability.
  */
-import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from '../stamp/constants.js';
+import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from '../domStamping/constants.js';
 import type { Target } from './types.js';
 
 /**

@@ -3,13 +3,6 @@
  */
 
 /**
- * Check if the current context is running inside an iframe.
- */
-export function isInIframe(): boolean {
-  return typeof window !== 'undefined' && window.parent !== window;
-}
-
-/**
  * Extract item ID from a DatoCMS edit URL.
  * Format: https://{domain}/editor/item_types/{typeId}/items/{itemId}/edit
  * Item IDs can be numeric strings ("123456") or base64-encoded UUIDs

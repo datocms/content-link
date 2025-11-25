@@ -29,68 +29,78 @@ const result = await executeQuery(query, {
 ### 2. Enable automatic click-to-edit overlays
 
 ```ts
-import { createOverlaysController } from '@datocms/content-link';
+import { createController } from '@datocms/content-link';
 
-createOverlaysController().enable();
+const controller = createController();
+controller.enableClickToEdit();
 ```
 
 That's all you need for the majority of projects! If you see overlays and deep links opening the correct records, your setup is complete!
 
 ---
 
-### `createOverlaysController(options?)`
+### `createController(options?)`
 
 ```ts
-import { createOverlaysController } from '@datocms/content-link';
+import { createController } from '@datocms/content-link';
 
 // Minimal (no options required)
-const controller = createOverlaysController();
+const controller = createController();
 
 // Available options
-const controller = createOverlaysController({
+const controller = createController({
   // Optional: limit scanning/observation to this root instead of the whole document.
   // Can be a ShadowRoot or a specific container element.
   root: document.getElementById('preview-container'),
 
-  // Optional: customize the overlay appearance
-  overlayStyle: {
+  // Optional: customize the click-to-edit overlay appearance
+  clickToEditStyle: {
     borderColor: '#0066ff',
     borderWidth: '3px',
     borderRadius: '12px',
     backgroundColor: 'rgba(0, 102, 255, 0.15)',
     padding: 10
+  },
+
+  // Optional: callback invoked when the Studio requests navigation to a different URL
+  onNavigateTo: (url: string) => {
+    // Handle client-side routing
+    router.push(url);
   }
 });
 
-// Control & refresh
-controller.enable();    // turn overlays on
-controller.disable();   // turn overlays off (keeps controller reusable)
-controller.toggle();    // flip overlays on/off without disposing
-controller.isEnabled(); // check if currently enabled
-controller.isDisposed(); // check if disposed
-controller.refresh();   // re-scan the whole root; or pass a subtree: controller.refresh(someSubtree)
-controller.dispose();   // permanently tear down and clean up (controller becomes inert)
+// Control click-to-edit overlays
+controller.enableClickToEdit();       // turn click-to-edit overlays on
+controller.disableClickToEdit();      // turn click-to-edit overlays off
+controller.isClickToEditEnabled();    // check if click-to-edit is currently enabled
+controller.isDisposed();              // check if disposed
+controller.dispose();                 // permanently tear down and clean up (controller becomes inert)
+
+// Notify Studio of URL changes (for client-side routing)
+controller.setCurrentUrl(window.location.pathname);
 ```
 
-Returns a controller to manage overlays and rescans.
+Returns a controller to manage DOM stamping and click-to-edit overlays.
 
 **Options:**
 - `root?: ParentNode`: Limit scanning to a specific container (default: `document`)
-- `overlayStyle?: OverlayStyle`: Customize the appearance of highlight overlays
+- `clickToEditStyle?: ClickToEditStyle`: Customize the appearance of click-to-edit highlight overlays
   - `borderColor?: string`: CSS border color (default: `'#ff7751'`)
   - `borderWidth?: string`: CSS border width (default: `'2px'`)
   - `borderRadius?: string`: CSS border radius (default: `'8px'`)
   - `backgroundColor?: string`: CSS background color with opacity (default: `'rgba(255, 119, 81, 0.12)'`)
   - `padding?: number`: Padding around highlighted elements in pixels (default: `8`)
+- `onNavigateTo?: (url: string) => void`: Callback invoked when the Studio requests navigation (useful for client-side routing)
 
 **Controller methods:**
-- `enable()`: Turn overlays on
-- `disable()`: Turn overlays off (keeps controller reusable)
-- `toggle()`: Flip overlays on/off without disposing
-- `isEnabled()`: Returns `true` if currently enabled
-- `isDisposed()`: Returns `true` if disposed
-- `refresh(root?)`: Re-run a stega scan for the whole root or the provided subtree (use after you mutate DOM outside observers)
+- `enableClickToEdit()`: Turn click-to-edit overlays on (allows clicking elements to open the editor)
+- `disableClickToEdit()`: Turn click-to-edit overlays off (DOM stamping continues)
+- `isClickToEditEnabled()`: Returns `true` if click-to-edit is currently enabled
+- `isDisposed()`: Returns `true` if the controller has been disposed
+- `setCurrentUrl(url: string)`: Notify the Studio of the current URL (for client-side routing)
 - `dispose()`: Permanently disconnects observers and cleans up. After dispose, the controller cannot be re-enabled; create a new one if needed
+
+**Note:** DOM stamping (detecting and marking editable elements) runs automatically when the controller is created and continues until `dispose()` is called. Click-to-edit overlays are independent and must be explicitly enabled with `enableClickToEdit()`.
 
 ---
 
@@ -170,15 +180,23 @@ const clean = stripStega(someString);
 
 ### Runtime behaviour
 
-1. Initial scan: walks text nodes and `<img alt>` values inside `root`, decodes stega, stamps attributes, removes stega data from content.
-2. MutationObserver watches character data, child list changes, and `alt` mutations; rescans are batched automatically.
-3. Overlay controller – listens for hover/click/focus/keyboard; opens the decoded edit URL in a new tab.
-4. Dispose – disconnects observers, tears down listeners, and cleans up.
+1. **DOM Stamping** (automatic): Walks text nodes and `<img alt>` values inside `root`, decodes stega, stamps attributes (`data-datocms-stega`), removes stega data from content. MutationObserver watches for changes and rescans automatically.
+2. **Click-to-Edit Overlays** (opt-in): When enabled via `enableClickToEdit()`, listens for hover/click/focus/keyboard events and highlights editable regions. Clicking opens the edit URL in the DatoCMS Studio or a new tab.
+3. **Dispose**: Disconnects all observers, tears down listeners, clears stamps, and cleans up.
+
+### Architecture
+
+The controller orchestrates two independent managers:
+- **DomStampingManager**: Handles DOM observation, mutation batching, stega decoding, and attribute stamping
+- **ClickToEditManager**: Handles visual highlighting and user interactions (only active when enabled)
+
+Both managers can work independently - stamping continues even when click-to-edit is disabled.
 
 ## Troubleshooting
 
-- **No overlays appear**: Ensure your fetch requests include the `X-Visual-Editing` and `X-Base-Editing-Url` headers. The stega-encoded metadata is only included in responses when these headers are present.
-- **Overlays not updating**: Call `controller.refresh()` after DOM changes, or use `useDatoVisualEditingListen` for automatic updates with real-time content.
+- **No overlays appear**: Ensure your fetch requests include the `contentLink` and `baseEditingUrl` options. The stega-encoded metadata is only included in responses when these options are present. Also, make sure you've called `enableClickToEdit()` on the controller.
+- **Elements not clickable**: DOM stamping runs automatically, but click-to-edit overlays require explicit activation via `enableClickToEdit()`.
+- **Overlays not updating**: The MutationObserver automatically detects DOM changes and rescans. If you're replacing large parts of the DOM at once, ensure the mutations are observable.
 
 ## License
 

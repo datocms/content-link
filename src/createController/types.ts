@@ -4,10 +4,10 @@
  */
 
 /**
- * Style options for customizing the appearance of the highlight overlay.
+ * Style options for customizing the appearance of the click-to-edit highlight.
  * All properties are optional and will fall back to default values if not provided.
  */
-export type OverlayStyle = {
+export type ClickToEditStyle = {
   /** CSS border color (default: '#ff7751') */
   borderColor?: string;
   /** CSS border width (default: '2px') */
@@ -20,10 +20,10 @@ export type OverlayStyle = {
   padding?: number;
 };
 
-export type CreateOverlaysControllerOptions = {
+export type CreateClickToEditControllerOptions = {
   root?: ParentNode;
-  /** Style options for customizing the highlight overlay appearance */
-  overlayStyle?: OverlayStyle;
+  /** Style options for customizing the click-to-edit highlight appearance */
+  clickToEditStyle?: ClickToEditStyle;
   /** Callback invoked when the Studio requests navigation to a different URL */
   onNavigateTo?: (url: string) => void;
 };
@@ -33,17 +33,23 @@ export type StampSummary = {
   appliedStamps: Map<Element, string>;
 };
 
-export type OverlaysController = {
-  enable(): void;
-  disable(): void;
-  toggle(): void;
+export type Controller = {
   dispose(): void;
-  isEnabled(): boolean;
   isDisposed(): boolean;
-  refresh(root?: ParentNode): void;
   /** Notify the Studio of the current URL (for client-side routing) */
   setCurrentUrl(url: string): void;
+  /** Enable click-to-edit functionality */
+  enableClickToEdit(): void;
+  /** Disable click-to-edit functionality */
+  disableClickToEdit(): void;
+  /** Whether click-to-edit is currently enabled */
+  isClickToEditEnabled(): boolean;
 };
+
+/**
+ * @deprecated Use `Controller` instead
+ */
+export type ClickToEditController = Controller;
 
 export type State = {
   enabled: boolean;
