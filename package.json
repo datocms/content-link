@@ -1,6 +1,6 @@
 {
   "name": "@datocms/content-link",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DatoCMS visual editing overlays without Vercel dependencies.",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -10,7 +10,12 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=18"
   },
