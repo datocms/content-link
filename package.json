@@ -55,6 +55,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@vercel/stega": "^0.1.2"
+    "@vercel/stega": "^0.1.2",
+    "penpal": "^6.2.2"
   }
 }

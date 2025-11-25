@@ -2,6 +2,12 @@
  * Browser-only implementation that manages overlay state and DOM bookkeeping.
  */
 import { resolveDocument } from '../utils/dom.js';
+import { extractItemIds } from '../utils/studio.js';
+import {
+  type StudioCallbacks,
+  type StudioConnection,
+  createStudioConnection
+} from './StudioConnection.js';
 import { EVENT_READY, EVENT_STAMPED, EVENT_STATE } from './events/constants.js';
 import { setupOverlay } from './overlay/setup.js';
 import { createScheduler } from './scheduler.js';
@@ -20,9 +26,13 @@ export class BrowserController implements OverlaysController {
   private readonly pending = new Set<ParentNode>();
   private readonly scheduleStamp: () => void;
   private readonly overlayStyle?: OverlayStyle;
+  private readonly onNavigateTo?: (url: string) => void;
 
   private observer: MutationObserver | null = null;
   private disposeOverlay: (() => void) | null = null;
+  private studioConnection: StudioConnection | null = null;
+  private connectionInitialized = false;
+  private highlightedElements = new Set<Element>();
   private enabled = false;
   private disposed = false;
   private readyEmitted = false;
@@ -31,6 +41,7 @@ export class BrowserController implements OverlaysController {
     this.root = options.root ?? document;
     this.doc = this.ensureDocument(this.root);
     this.overlayStyle = options.overlayStyle;
+    this.onNavigateTo = options.onNavigateTo;
     this.scheduleStamp = createScheduler(() => this.runStamp());
   }
 
@@ -51,6 +62,7 @@ export class BrowserController implements OverlaysController {
     this.attach();
     this.emitState();
     this.runStamp(true);
+    this.initializeStudioConnection();
   }
 
   /** Tear down observers/overlays but keep the instance reusable. */
@@ -82,8 +94,13 @@ export class BrowserController implements OverlaysController {
       return;
     }
     this.disable();
+    this.clearHighlight();
     clearStamps(this.root);
     this.pending.clear();
+    if (this.studioConnection) {
+      this.studioConnection.destroy();
+      this.studioConnection = null;
+    }
     this.disposed = true;
     this.emitState();
   }
@@ -111,6 +128,15 @@ export class BrowserController implements OverlaysController {
   }
 
   /**
+   * Notify the Studio of the current URL (for client-side routing).
+   */
+  setCurrentUrl(url: string): void {
+    if (this.studioConnection) {
+      this.studioConnection.setCurrentUrl(url);
+    }
+  }
+
+  /**
    * Wire up DOM observers and auxiliary UI (overlay, dev panel).
    */
   private attach(): void {
@@ -125,7 +151,7 @@ export class BrowserController implements OverlaysController {
       attributes: true,
       attributeFilter: ['alt']
     });
-    this.disposeOverlay = setupOverlay(this.doc, this.overlayStyle);
+    this.disposeOverlay = setupOverlay(this.doc, this.overlayStyle, () => this.studioConnection);
   }
 
   /** Reverse everything created in `attach`, leaving the DOM untouched. */
@@ -241,6 +267,12 @@ export class BrowserController implements OverlaysController {
       this.readyEmitted = true;
       this.dispatch(EVENT_READY, summary);
     }
+
+    // Notify the Studio of all item IDs present on the page
+    if (this.studioConnection) {
+      const itemIds = extractItemIds(summary.appliedStamps.values());
+      this.studioConnection.setPageItems(itemIds);
+    }
   }
 
   /** Broadcast the current enabled/disposed flags to listeners. */
@@ -250,6 +282,11 @@ export class BrowserController implements OverlaysController {
       disposed: this.disposed
     };
     this.dispatch(EVENT_STATE, state);
+
+    // Notify the Studio of overlay state changes
+    if (this.studioConnection) {
+      this.studioConnection.setOverlaysEnabled(this.enabled);
+    }
   }
 
   /**
@@ -269,6 +306,131 @@ export class BrowserController implements OverlaysController {
       this.doc.dispatchEvent(event);
     } catch {
       // Ignore dispatch failures (e.g. CustomEvent polyfill not available)
+    }
+  }
+
+  /**
+   * Initialize the Studio connection if we're in an iframe.
+   * This is async but we don't await it - connection happens in the background.
+   */
+  private initializeStudioConnection(): void {
+    if (this.connectionInitialized) {
+      return;
+    }
+    this.connectionInitialized = true;
+
+    const callbacks: StudioCallbacks = {
+      onNavigateTo: this.onNavigateTo,
+      onSetOverlaysEnabled: (enabled: boolean) => {
+        if (enabled) {
+          this.enable();
+        } else {
+          this.disable();
+        }
+      },
+      onHighlightItem: (itemId: string) => {
+        this.highlightItem(itemId);
+      },
+      onClearHighlight: () => {
+        this.clearHighlight();
+      }
+    };
+
+    // Attempt connection in the background
+    createStudioConnection(callbacks).then((connection) => {
+      if (connection && !this.disposed) {
+        this.studioConnection = connection;
+        // Send initial page title
+        if (this.doc.title) {
+          connection.setPageTitle(this.doc.title);
+        }
+      }
+    });
+  }
+
+  /**
+   * Highlight all elements that contain the specified item ID.
+   */
+  private highlightItem(itemId: string): void {
+    if (!this.enabled || this.disposed) {
+      return;
+    }
+
+    // Clear previous highlights
+    this.clearHighlight();
+
+    // Find all elements with edit URLs containing this item ID
+    const pattern = `/items/${itemId}/edit`;
+    const selector = `[data-datocms-stega*="${pattern}"], [data-datocms-edit-url*="${pattern}"]`;
+
+    try {
+      const elements = this.root.querySelectorAll(selector);
+
+      if (elements.length === 0) {
+        return;
+      }
+
+      // Apply highlight class to all matching elements
+      const highlightClass = 'datocms-highlighted-item';
+
+      for (const el of elements) {
+        el.classList.add(highlightClass);
+        this.highlightedElements.add(el);
+      }
+
+      // Scroll the first element into view
+      const firstElement = elements[0];
+      if (firstElement && typeof firstElement.scrollIntoView === 'function') {
+        firstElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      // Add CSS for the highlight if not already present
+      this.ensureHighlightStyles();
+    } catch (error) {
+      if (typeof console !== 'undefined' && console.debug) {
+        console.debug('[@datocms/content-link] Failed to highlight item:', error);
+      }
+    }
+  }
+
+  /**
+   * Clear all highlights applied by highlightItem.
+   */
+  private clearHighlight(): void {
+    const highlightClass = 'datocms-highlighted-item';
+
+    for (const el of this.highlightedElements) {
+      if (el.isConnected) {
+        el.classList.remove(highlightClass);
+      }
+    }
+
+    this.highlightedElements.clear();
+  }
+
+  /**
+   * Ensure the highlight styles are injected into the document.
+   */
+  private ensureHighlightStyles(): void {
+    const styleId = 'datocms-highlight-styles';
+
+    if (this.doc.getElementById(styleId)) {
+      return;
+    }
+
+    const style = this.doc.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .datocms-highlighted-item {
+        outline: 3px solid ${this.overlayStyle?.borderColor ?? '#ff7751'} !important;
+        outline-offset: 4px !important;
+        background-color: ${this.overlayStyle?.backgroundColor ?? 'rgba(255, 119, 81, 0.12)'} !important;
+      }
+    `;
+
+    const head = this.doc.head ?? this.doc.querySelector('head');
+    if (head) {
+      head.appendChild(style);
     }
   }
 }

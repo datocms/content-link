@@ -1,9 +1,10 @@
-import type { OverlayStyle } from '../types.js';
 /**
  * Overlay rendering logic: highlights editable regions under the pointer and
  * opens the editor when clicked. Lives separately from the controller so it
  * can be unit-tested and swapped out if styling needs change.
  */
+import { type StudioConnection, safeExtractItemId } from '../StudioConnection.js';
+import type { OverlayStyle } from '../types.js';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { findEditableTarget } from './resolver.js';
 import { rafThrottle } from './throttle.js';
@@ -35,7 +36,11 @@ const isKeyboardEvent = (event: Event): event is KeyboardEvent => {
  * and wire up the pointer/focus listeners required to drive it.
  * Returns a disposer that removes all listeners and DOM elements.
  */
-export function setupOverlay(doc?: Document, style?: OverlayStyle): () => void {
+export function setupOverlay(
+  doc?: Document,
+  style?: OverlayStyle,
+  getStudioConnection?: () => StudioConnection | null
+): () => void {
   const resolvedDoc = doc ?? (typeof document !== 'undefined' ? document : null);
   if (!resolvedDoc) {
     return () => void 0;
@@ -97,13 +102,25 @@ export function setupOverlay(doc?: Document, style?: OverlayStyle): () => void {
     }
   };
 
-  // Open the edit URL in a new tab, respecting modifier keys when possible.
+  // Open the edit URL in a new tab, or send to Studio if connected.
   const open = (target: Target, event: MouseEvent | KeyboardEvent) => {
     if (event instanceof MouseEvent && event.button !== 0) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
+
+    // If connected to Studio, send the item ID instead of opening a new tab
+    const studioConnection = getStudioConnection?.();
+    if (studioConnection?.isConnected()) {
+      const itemId = safeExtractItemId(target.editUrl);
+      if (itemId) {
+        studioConnection.openItem(itemId);
+        return;
+      }
+    }
+
+    // Fallback: open in new tab (standalone mode)
     const opener = view ?? (typeof window !== 'undefined' ? window : null);
     opener?.open(target.editUrl, '_blank', 'noopener,noreferrer');
   };

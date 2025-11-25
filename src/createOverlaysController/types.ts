@@ -24,6 +24,8 @@ export type CreateOverlaysControllerOptions = {
   root?: ParentNode;
   /** Style options for customizing the highlight overlay appearance */
   overlayStyle?: OverlayStyle;
+  /** Callback invoked when the Studio requests navigation to a different URL */
+  onNavigateTo?: (url: string) => void;
 };
 
 export type StampSummary = {
@@ -39,6 +41,8 @@ export type OverlaysController = {
   isEnabled(): boolean;
   isDisposed(): boolean;
   refresh(root?: ParentNode): void;
+  /** Notify the Studio of the current URL (for client-side routing) */
+  setCurrentUrl(url: string): void;
 };
 
 export type State = {

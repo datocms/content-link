@@ -48,4 +48,8 @@ export class NoopController implements OverlaysController {
   refresh(): void {
     // no-op on the server
   }
+
+  setCurrentUrl(): void {
+    // no-op on the server
+  }
 }
