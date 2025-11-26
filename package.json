@@ -61,6 +61,6 @@
   },
   "dependencies": {
     "@vercel/stega": "^0.1.2",
-    "penpal": "^6.2.2"
+    "penpal": "^4.1.1"
   }
 }
