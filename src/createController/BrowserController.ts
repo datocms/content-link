@@ -23,13 +23,17 @@ export class BrowserController implements Controller {
   private readonly onNavigateTo?: (url: string) => void;
   private readonly eventsManager: EventsManager;
   private readonly clickToEditManager: ClickToEditManager;
+  private readonly stampingManager: DomStampingManager;
 
-  private stampingManager: DomStampingManager | null = null;
   private studioConnection: {
     parent: AsyncMethodReturns<StudioMethods>;
     destroy: () => void;
   } | null = null;
+
   private disposed = false;
+
+  private pageItemIds: string[] = [];
+  private currentUrl = document.location.toString();
 
   constructor(options: CreateClickToEditControllerOptions) {
     this.root = options.root ?? document;
@@ -74,14 +78,11 @@ export class BrowserController implements Controller {
     // Disable click-to-edit first
     this.clickToEditManager.stop();
     // Stop stamping and clear stamps
-    if (this.stampingManager) {
-      this.stampingManager.stop();
-      this.stampingManager = null;
-    }
+    this.stampingManager.stop();
+
     // Clean up Studio connection
     if (this.studioConnection) {
       this.studioConnection.destroy();
-      this.studioConnection = null;
     }
     this.disposed = true;
   }
@@ -95,7 +96,7 @@ export class BrowserController implements Controller {
    * Notify the Studio of the current URL (for client-side routing).
    */
   setCurrentUrl(url: string): void {
-    this.studioConnection?.parent.setCurrentUrl({ url });
+    this, (this.currentUrl = url);
   }
 
   /** Enable click-to-edit functionality */
@@ -104,8 +105,7 @@ export class BrowserController implements Controller {
       return;
     }
     this.clickToEditManager.start();
-
-    this.studioConnection?.parent.setClickToEditEnabled({ enabled: true });
+    this.notifyStateChangeToStudio();
   }
 
   /** Disable click-to-edit functionality */
@@ -114,8 +114,7 @@ export class BrowserController implements Controller {
       return;
     }
     this.clickToEditManager.stop();
-
-    this.studioConnection?.parent.setClickToEditEnabled({ enabled: false });
+    this.notifyStateChangeToStudio();
   }
 
   /** Whether click-to-edit is currently enabled */
@@ -128,8 +127,15 @@ export class BrowserController implements Controller {
    */
   private handleStampResult(summary: StampSummary): void {
     this.eventsManager.emitStamped(summary);
-    this.studioConnection?.parent.setPageItems({
-      itemIds: extractItemIds(summary.appliedStamps.values())
+    this.pageItemIds = [...this.pageItemIds, ...extractItemIds(summary.appliedStamps.values())];
+    this.notifyStateChangeToStudio();
+  }
+
+  private notifyStateChangeToStudio() {
+    this.studioConnection?.parent.onStateChange({
+      clickToEditEnabled: this.clickToEditManager.isActive(),
+      currentUrl: this.currentUrl,
+      pageItemIds: this.pageItemIds
     });
   }
 

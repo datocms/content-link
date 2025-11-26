@@ -46,11 +46,6 @@ export type Controller = {
   isClickToEditEnabled(): boolean;
 };
 
-/**
- * @deprecated Use `Controller` instead
- */
-export type ClickToEditController = Controller;
-
 export type State = {
   enabled: boolean;
   disposed: boolean;
