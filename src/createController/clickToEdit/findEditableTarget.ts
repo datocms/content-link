@@ -3,14 +3,14 @@
  * hovers over the page. Simple wrapper, but kept isolated for testability.
  */
 import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from '../domStamping/constants.js';
-import type { Target } from './types.js';
 
-/**
- * Walk up from the hovered element until we hit something stamped with
- * `data-datocms-edit-url`. Returns both the element and the URL to open.
- */
-export function findEditableTarget(from: Element | null): Target | null {
-  if (!from) {
+export type EditableTarget = {
+  element: Element;
+  editUrl: string;
+};
+
+export function findEditableTarget(from: EventTarget | Element | null): EditableTarget | null {
+  if (!from || !(from instanceof Element)) {
     return null;
   }
 
@@ -22,9 +22,10 @@ export function findEditableTarget(from: Element | null): Target | null {
   }
 
   const url = el.getAttribute(MANUAL_STAMP_ATTRIBUTE) || el.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+
   if (!url) {
     return null;
   }
 
-  return { el, editUrl: url };
+  return { element: el, editUrl: url };
 }

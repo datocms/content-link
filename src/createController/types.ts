@@ -3,27 +3,8 @@
  * These form the contract between the library and consumers.
  */
 
-/**
- * Style options for customizing the appearance of the click-to-edit highlight.
- * All properties are optional and will fall back to default values if not provided.
- */
-export type ClickToEditStyle = {
-  /** CSS border color (default: '#ff7751') */
-  borderColor?: string;
-  /** CSS border width (default: '2px') */
-  borderWidth?: string;
-  /** CSS border radius (default: '8px') */
-  borderRadius?: string;
-  /** CSS background color with opacity (default: 'rgba(255, 119, 81, 0.12)') */
-  backgroundColor?: string;
-  /** Padding around the highlighted element in pixels (default: 8) */
-  padding?: number;
-};
-
-export type CreateClickToEditControllerOptions = {
+export type CreateControllerOptions = {
   root?: ParentNode;
-  /** Style options for customizing the click-to-edit highlight appearance */
-  clickToEditStyle?: ClickToEditStyle;
   /** Callback invoked when the Studio requests navigation to a different URL */
   onNavigateTo?: (path: string) => void;
 };

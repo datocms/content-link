@@ -10,18 +10,12 @@ import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
-import { StudioMethods } from './studio/types.js';
-import type {
-  ClickToEditStyle,
-  Controller,
-  CreateClickToEditControllerOptions,
-  StampSummary
-} from './types.js';
+import type { StudioMethods } from './studio/types.js';
+import type { Controller, CreateControllerOptions, StampSummary } from './types.js';
 
 export class BrowserController implements Controller {
   private readonly root: ParentNode;
   private readonly doc: Document;
-  private readonly clickToEditStyle?: ClickToEditStyle;
   private readonly onNavigateTo?: (path: string) => void;
   private readonly eventsManager: EventsManager;
   private readonly clickToEditManager: ClickToEditManager;
@@ -36,21 +30,18 @@ export class BrowserController implements Controller {
 
   private currentPath = toCompletePath(document.location.toString());
 
-  constructor(options: CreateClickToEditControllerOptions) {
+  constructor(options: CreateControllerOptions) {
     this.root = options.root ?? document;
     this.doc = this.ensureDocument(this.root);
-    this.clickToEditStyle = options.clickToEditStyle;
     this.onNavigateTo = options.onNavigateTo;
 
     // Initialize events manager
     this.eventsManager = new EventsManager({ doc: this.doc });
 
     // Initialize click-to-edit manager (but don't start it yet)
-    this.clickToEditManager = new ClickToEditManager({
-      doc: this.doc,
-      style: this.clickToEditStyle,
-      onEditClick: (editUrl) => this.handleEditClick(editUrl)
-    });
+    this.clickToEditManager = new ClickToEditManager(this.doc, (editUrl) =>
+      this.handleEditClick(editUrl)
+    );
 
     this.initializeStudioConnection();
 
