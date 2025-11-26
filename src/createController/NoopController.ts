@@ -18,7 +18,7 @@ export class NoopController implements Controller {
     return this.disposed;
   }
 
-  setCurrentUrl(): void {
+  setCurrentPath(): void {
     // no-op on the server
   }
 

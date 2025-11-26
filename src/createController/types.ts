@@ -25,7 +25,7 @@ export type CreateClickToEditControllerOptions = {
   /** Style options for customizing the click-to-edit highlight appearance */
   clickToEditStyle?: ClickToEditStyle;
   /** Callback invoked when the Studio requests navigation to a different URL */
-  onNavigateTo?: (url: string) => void;
+  onNavigateTo?: (path: string) => void;
 };
 
 export type StampSummary = {
@@ -37,7 +37,7 @@ export type Controller = {
   dispose(): void;
   isDisposed(): boolean;
   /** Notify the Studio of the current URL (for client-side routing) */
-  setCurrentUrl(url: string): void;
+  setCurrentPath(url: string): void;
   /** Enable click-to-edit functionality */
   enableClickToEdit(): void;
   /** Disable click-to-edit functionality */

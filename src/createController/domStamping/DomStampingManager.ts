@@ -33,6 +33,7 @@ export class DomStampingManager {
 
     // Set up MutationObserver
     this.observer = new MutationObserver((mutations) => this.handleMutations(mutations));
+
     this.observer.observe(this.root, {
       subtree: true,
       childList: true,

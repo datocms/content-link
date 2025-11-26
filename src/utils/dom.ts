@@ -16,3 +16,12 @@ export function resolveDocument(root: ParentNode): Document | null {
 export function inBrowser() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
+
+export function inIframe() {
+  return typeof window !== 'undefined' && window.parent !== window;
+}
+
+export function toCompletePath(urlString: string) {
+  const url = new URL(urlString, 'http://example.com');
+  return url.pathname + url.search + url.hash;
+}

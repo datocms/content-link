@@ -1,6 +1,6 @@
 export type WebsiteState = {
   clickToEditEnabled: boolean;
-  currentUrl: string;
+  currentPath: string;
   pageItemIds: string[];
 };
 

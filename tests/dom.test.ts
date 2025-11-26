@@ -1,16 +1,29 @@
 import * as stega from '@vercel/stega';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import {
   AUTOMATIC_STAMP_ATTRIBUTE,
   EDIT_GROUP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE
-} from '../src/createOverlaysController/stamp/constants.js';
-import { createOverlaysController } from '../src/index.js';
+  MANUAL_STAMP_ATTRIBUTE,
+} from '../src/createController/domStamping/constants.js';
+import { createController } from '../src/index.js';
 import * as decodeModule from '../src/stega/decode.js';
 
 const { vercelStegaCombine } = stega;
 
-const createRect = (x: number, y: number, width: number, height: number): DOMRect =>
+const createRect = (
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): DOMRect =>
   ({
     x,
     y,
@@ -22,8 +35,8 @@ const createRect = (x: number, y: number, width: number, height: number): DOMRec
     bottom: y + height,
     toJSON() {
       return { x, y, width, height };
-    }
-  }) as DOMRect;
+    },
+  } as DOMRect);
 
 beforeAll(() => {
   if (!('PointerEvent' in window)) {
@@ -42,16 +55,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('createOverlaysController', () => {
+describe('createController', () => {
   it('stamps attributes from stega content', () => {
     const encodedText = vercelStegaCombine('Hero headline', {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=hero.title.en'
+      href: 'hero123#fieldPath=hero.title.en',
     });
 
     const encodedAlt = vercelStegaCombine('Hero image alt', {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=hero.image'
+      href: 'hero123#fieldPath=hero.image',
     });
 
     document.body.innerHTML = `
@@ -61,8 +74,7 @@ describe('createOverlaysController', () => {
       </main>
     `;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const heroText = document.getElementById('hero-text') as HTMLElement;
     const heroImage = document.getElementById('hero-image') as HTMLImageElement;
@@ -72,7 +84,9 @@ describe('createOverlaysController', () => {
     );
     expect(heroText.textContent).toBe('Hero headline');
 
-    const imageWrapper = heroImage.closest(`[${AUTOMATIC_STAMP_ATTRIBUTE}]`) as HTMLElement;
+    const imageWrapper = heroImage.closest(
+      `[${AUTOMATIC_STAMP_ATTRIBUTE}]`
+    ) as HTMLElement;
     expect(imageWrapper).not.toBeNull();
     expect(imageWrapper.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
       'hero123#fieldPath=hero.image'
@@ -88,7 +102,7 @@ describe('createOverlaysController', () => {
   it('keeps overlay strictly attribute-based', () => {
     const payload = {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=headline'
+      href: 'hero123#fieldPath=headline',
     };
     const encoded = vercelStegaCombine('Story headline', payload);
 
@@ -99,8 +113,8 @@ describe('createOverlaysController', () => {
 
     const decodeSpy = vi.spyOn(decodeModule, 'decodeStega');
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
+    controller.enableClickToEdit();
 
     decodeSpy.mockClear();
 
@@ -109,7 +123,7 @@ describe('createOverlaysController', () => {
         bubbles: true,
         pointerType: 'mouse',
         clientX: 24,
-        clientY: 36
+        clientY: 36,
       })
     );
     element.dispatchEvent(
@@ -118,7 +132,7 @@ describe('createOverlaysController', () => {
         cancelable: true,
         button: 0,
         clientX: 24,
-        clientY: 36
+        clientY: 36,
       })
     );
 
@@ -138,12 +152,11 @@ describe('createOverlaysController', () => {
     document.body.innerHTML = `<section id="container"></section>`;
     const container = document.getElementById('container') as HTMLElement;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const encoded = vercelStegaCombine('Fresh content', {
       origin: 'datocms.com',
-      href: 'item-123#fieldPath=excerpt'
+      href: 'item-123#fieldPath=excerpt',
     });
 
     const paragraph = document.createElement('p');
@@ -153,7 +166,9 @@ describe('createOverlaysController', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(paragraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-123#fieldPath=excerpt');
+    expect(paragraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      'item-123#fieldPath=excerpt'
+    );
     expect(paragraph.textContent).toBe('Fresh content');
 
     controller.dispose();
@@ -162,12 +177,12 @@ describe('createOverlaysController', () => {
   it('warns when multiple stega payloads stamp the same element', () => {
     const firstEncoded = vercelStegaCombine('Primary title', {
       origin: 'datocms.com',
-      href: 'node-1#fieldPath=title'
+      href: 'node-1#fieldPath=title',
     });
 
     const secondEncoded = vercelStegaCombine('Secondary title', {
       origin: 'datocms.com',
-      href: 'node-2#fieldPath=subtitle'
+      href: 'node-2#fieldPath=subtitle',
     });
 
     const collide = document.createElement('p');
@@ -178,15 +193,18 @@ describe('createOverlaysController', () => {
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const [message, elementArg] = warnSpy.mock.calls[0];
-    expect(message).toContain('Multiple stega-encoded payloads resolved to the same DOM element');
+    expect(message).toContain(
+      'Multiple stega-encoded payloads resolved to the same DOM element'
+    );
     expect(elementArg).toBe(collide);
 
-    expect(collide.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('node-2#fieldPath=subtitle');
+    expect(collide.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      'node-2#fieldPath=subtitle'
+    );
 
     controller.dispose();
   });
@@ -202,15 +220,14 @@ describe('createOverlaysController', () => {
 
     const encodedPayload = {
       origin: 'datocms.com',
-      href: 'node-2#fieldPath=subheading'
+      href: 'node-2#fieldPath=subheading',
     };
 
     const encoded = vercelStegaCombine('Subheading', encodedPayload);
     const encodedParagraph = document.getElementById('encoded') as HTMLElement;
     encodedParagraph.textContent = encoded;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const manual = document.getElementById('manual') as HTMLElement;
     expect(encodedParagraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
@@ -220,18 +237,20 @@ describe('createOverlaysController', () => {
     controller.dispose();
 
     expect(manual.getAttribute(MANUAL_STAMP_ATTRIBUTE)).toBe('manual-1');
-    expect(encodedParagraph.hasAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(false);
+    expect(encodedParagraph.hasAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      false
+    );
   });
 
   it('honors wrapper targeting for text and zero-size images', () => {
     const encodedText = vercelStegaCombine('Wrapped text', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=wrapper.text'
+      href: 'item-1#fieldPath=wrapper.text',
     });
 
     const encodedAlt = vercelStegaCombine('Wrapped image', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=wrapper.image'
+      href: 'item-1#fieldPath=wrapper.image',
     });
 
     document.body.innerHTML = `
@@ -243,11 +262,12 @@ describe('createOverlaysController', () => {
       </div>
     `;
 
-    const wrappedImage = document.getElementById('wrapped-image') as HTMLImageElement;
+    const wrappedImage = document.getElementById(
+      'wrapped-image'
+    ) as HTMLImageElement;
     wrappedImage.getBoundingClientRect = () => createRect(0, 0, 0, 0);
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const textWrapper = document.getElementById('text-wrapper') as HTMLElement;
     const innerSpan = document.getElementById('wrapped') as HTMLElement;
@@ -257,74 +277,14 @@ describe('createOverlaysController', () => {
     );
     expect(innerSpan.hasAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(false);
 
-    const imageWrapper = document.getElementById('image-wrapper') as HTMLElement;
+    const imageWrapper = document.getElementById(
+      'image-wrapper'
+    ) as HTMLElement;
     expect(imageWrapper.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
       'item-1#fieldPath=wrapper.image'
     );
     expect(wrappedImage.getAttribute('alt')).toBe('Wrapped image');
 
     controller.dispose();
-  });
-
-  it('can disable and re-enable visual editing without losing context', () => {
-    const firstEncoded = vercelStegaCombine('Primary title', {
-      origin: 'datocms.com',
-      href: 'item-1#fieldPath=content.title'
-    });
-
-    document.body.innerHTML = `<h1 id="headline">${firstEncoded}</h1>`;
-
-    const controller = createOverlaysController();
-    controller.enable();
-
-    const heading = document.getElementById('headline') as HTMLElement;
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=content.title');
-    expect(heading.textContent).toBe('Primary title');
-
-    controller.disable();
-
-    const secondEncoded = vercelStegaCombine('Updated title', {
-      origin: 'datocms.com',
-      href: 'item-2#fieldPath=content.title'
-    });
-
-    heading.textContent = secondEncoded;
-
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=content.title');
-    expect(heading.textContent).toBe(secondEncoded);
-
-    controller.enable();
-
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-2#fieldPath=content.title');
-    expect(heading.textContent).toBe('Updated title');
-
-    controller.dispose();
-  });
-
-  it('exposes state helpers for manual toggle flows', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    document.body.innerHTML = `<p id="content"></p>`;
-
-    const controller = createOverlaysController();
-
-    expect(controller.isEnabled()).toBe(false);
-    expect(controller.isDisposed()).toBe(false);
-
-    controller.enable();
-    expect(controller.isEnabled()).toBe(true);
-
-    controller.toggle();
-    expect(controller.isEnabled()).toBe(false);
-
-    controller.toggle();
-    expect(controller.isEnabled()).toBe(true);
-
-    controller.dispose();
-    expect(controller.isDisposed()).toBe(true);
-    expect(controller.isEnabled()).toBe(false);
-
-    controller.enable();
-    expect(controller.isEnabled()).toBe(false);
   });
 });

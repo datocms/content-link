@@ -63,9 +63,9 @@ const controller = createController({
   },
 
   // Optional: callback invoked when the Studio requests navigation to a different URL
-  onNavigateTo: (url: string) => {
+  onNavigateTo: (path: string) => {
     // Handle client-side routing
-    router.push(url);
+    router.push(path);
   }
 });
 
@@ -77,7 +77,7 @@ controller.isDisposed();              // check if disposed
 controller.dispose();                 // permanently tear down and clean up (controller becomes inert)
 
 // Notify Studio of URL changes (for client-side routing)
-controller.setCurrentUrl(window.location.pathname);
+controller.setCurrentPath(window.location.pathname);
 ```
 
 Returns a controller to manage DOM stamping and click-to-edit overlays.
@@ -90,14 +90,14 @@ Returns a controller to manage DOM stamping and click-to-edit overlays.
   - `borderRadius?: string`: CSS border radius (default: `'8px'`)
   - `backgroundColor?: string`: CSS background color with opacity (default: `'rgba(255, 119, 81, 0.12)'`)
   - `padding?: number`: Padding around highlighted elements in pixels (default: `8`)
-- `onNavigateTo?: (url: string) => void`: Callback invoked when the Studio requests navigation (useful for client-side routing)
+- `onNavigateTo?: (path: string) => void`: Callback invoked when the Studio requests navigation (useful for client-side routing)
 
 **Controller methods:**
 - `enableClickToEdit()`: Turn click-to-edit overlays on (allows clicking elements to open the editor)
 - `disableClickToEdit()`: Turn click-to-edit overlays off (DOM stamping continues)
 - `isClickToEditEnabled()`: Returns `true` if click-to-edit is currently enabled
 - `isDisposed()`: Returns `true` if the controller has been disposed
-- `setCurrentUrl(url: string)`: Notify the Studio of the current URL (for client-side routing)
+- `setCurrentPath(path: string)`: Notify the Studio of the current URL (for client-side routing)
 - `dispose()`: Permanently disconnects observers and cleans up. After dispose, the controller cannot be re-enabled; create a new one if needed
 
 **Note:** DOM stamping (detecting and marking editable elements) runs automatically when the controller is created and continues until `dispose()` is called. Click-to-edit overlays are independent and must be explicitly enabled with `enableClickToEdit()`.

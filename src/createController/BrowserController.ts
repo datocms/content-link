@@ -3,10 +3,12 @@
  * Acts as a lightweight coordinator handling shared concerns like Studio connection and state events.
  */
 import { AsyncMethodReturns, connectToParent } from 'penpal';
-import { resolveDocument } from '../utils/dom.js';
+import { inIframe, resolveDocument, toCompletePath } from '../utils/dom.js';
 import { extractItemId, extractItemIds } from '../utils/studio.js';
 import { ClickToEditManager } from './clickToEdit/ClickToEditManager.js';
+import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
+import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
 import { StudioMethods } from './studio/types.js';
 import type {
@@ -20,7 +22,7 @@ export class BrowserController implements Controller {
   private readonly root: ParentNode;
   private readonly doc: Document;
   private readonly clickToEditStyle?: ClickToEditStyle;
-  private readonly onNavigateTo?: (url: string) => void;
+  private readonly onNavigateTo?: (path: string) => void;
   private readonly eventsManager: EventsManager;
   private readonly clickToEditManager: ClickToEditManager;
   private readonly stampingManager: DomStampingManager;
@@ -32,8 +34,7 @@ export class BrowserController implements Controller {
 
   private disposed = false;
 
-  private pageItemIds: string[] = [];
-  private currentUrl = document.location.toString();
+  private currentPath = toCompletePath(document.location.toString());
 
   constructor(options: CreateClickToEditControllerOptions) {
     this.root = options.root ?? document;
@@ -95,8 +96,8 @@ export class BrowserController implements Controller {
   /**
    * Notify the Studio of the current URL (for client-side routing).
    */
-  setCurrentUrl(url: string): void {
-    this, (this.currentUrl = url);
+  setCurrentPath(urlOrPath: string): void {
+    this.currentPath = toCompletePath(urlOrPath);
   }
 
   /** Enable click-to-edit functionality */
@@ -127,16 +128,39 @@ export class BrowserController implements Controller {
    */
   private handleStampResult(summary: StampSummary): void {
     this.eventsManager.emitStamped(summary);
-    this.pageItemIds = [...this.pageItemIds, ...extractItemIds(summary.appliedStamps.values())];
     this.notifyStateChangeToStudio();
   }
 
   private notifyStateChangeToStudio() {
     this.studioConnection?.parent.onStateChange({
       clickToEditEnabled: this.clickToEditManager.isActive(),
-      currentUrl: this.currentUrl,
-      pageItemIds: this.pageItemIds
+      currentPath: this.currentPath,
+      pageItemIds: this.getPageItemIds()
     });
+  }
+
+  /**
+   * Gather all item IDs from stamped elements in the page.
+   */
+  private getPageItemIds(): string[] {
+    // Find all stamped elements in the DOM
+    const stampedElements = this.root.querySelectorAll(
+      `[${MANUAL_STAMP_ATTRIBUTE}], [${AUTOMATIC_STAMP_ATTRIBUTE}]`
+    );
+
+    console.log(stampedElements);
+
+    // Collect all edit URLs
+    const editUrls: string[] = [];
+    for (const element of stampedElements) {
+      const target = findEditableTarget(element as Element);
+      if (target) {
+        editUrls.push(target.editUrl);
+      }
+    }
+
+    // Extract unique item IDs from edit URLs
+    return extractItemIds(editUrls);
   }
 
   /**
@@ -162,9 +186,7 @@ export class BrowserController implements Controller {
    * This is async but we don't await it - connection happens in the background.
    */
   private async initializeStudioConnection() {
-    const isInFrame = typeof window !== 'undefined' && window.parent !== window;
-
-    if (!isInFrame) {
+    if (!inIframe()) {
       return;
     }
 
@@ -172,8 +194,8 @@ export class BrowserController implements Controller {
     const connection = connectToParent<StudioMethods>({
       timeout: 20000,
       methods: {
-        navigateTo: (payload: { url: string }) => {
-          this.onNavigateTo?.(payload.url);
+        navigateTo: (payload: { path: string }) => {
+          this.onNavigateTo?.(payload.path);
         },
         setClickToEditEnabled: (payload: { enabled: boolean }) => {
           if (payload.enabled) {
@@ -205,8 +227,6 @@ export class BrowserController implements Controller {
       }
     };
 
-    // if (this.doc.title) {
-    //   connection.setPageTitle(this.doc.title);
-    // }
+    this.notifyStateChangeToStudio();
   }
 }
