@@ -88,9 +88,14 @@ export class HighlightOverlay {
 
   /** Lazily create the overlay element with the expected styling. */
   private ensureRoot(): void {
-    if (this.root) {
+    if (this.root && this.root.parentNode && this.root.isConnected) {
       return;
     }
+
+    if (this.root) {
+      this.root.remove();
+    }
+
     const body = this.doc.body;
     if (!body) {
       return;
@@ -152,7 +157,12 @@ export class HighlightOverlay {
     if (rect.width === 0 && rect.height === 0) {
       return null;
     }
-    return { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height
+    };
   }
 
   /**

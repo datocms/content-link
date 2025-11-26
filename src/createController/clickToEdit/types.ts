@@ -8,13 +8,6 @@ export type Target = {
   editUrl: string;
 };
 
-export type Listener = {
-  target: EventTarget;
-  type: string;
-  handler: EventListenerOrEventListenerObject;
-  options?: AddEventListenerOptions | boolean;
-};
-
 /**
  * Configuration options for ClickToEditManager.
  */

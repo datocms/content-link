@@ -2,10 +2,11 @@
  * Manages click-to-edit functionality: highlights editable regions under the pointer
  * and invokes callback when clicked. Absorbs all logic from setup.ts into a class-based manager.
  */
+import { ClickToEditStyle } from '../types.js';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { findEditableTarget } from './findEditableTarget.js';
 import { rafThrottle } from './throttle.js';
-import type { ClickToEditManagerOptions, Listener, Target } from './types.js';
+import type { ClickToEditManagerOptions, Target } from './types.js';
 
 const isPointerEvent = (event: Event): event is PointerEvent => {
   if (typeof PointerEvent !== 'undefined') {
@@ -34,20 +35,19 @@ export class ClickToEditManager {
   private readonly view: Window | null;
 
   private overlay: HighlightOverlay | null = null;
+  private style?: ClickToEditStyle;
   private current: Target | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private listeners: Listener[] = [];
+  private listenerAbortController: AbortController | null = null;
   private active = false;
   private refresh: (() => void) & { cancel: () => void };
   private throttledPointer: ((event: Event) => void) & { cancel: () => void };
 
   constructor(options: ClickToEditManagerOptions) {
     this.doc = options.doc;
+    this.style = options.style;
     this.onEditClick = options.onEditClick;
     this.view = this.doc.defaultView ?? (typeof window !== 'undefined' ? window : null);
-
-    // Initialize overlay
-    this.overlay = new HighlightOverlay(this.doc, options.style);
 
     // Create throttled handlers
     this.refresh = rafThrottle(() => this.handleRefresh());
@@ -59,10 +59,14 @@ export class ClickToEditManager {
     if (this.active) {
       return;
     }
+
     this.active = true;
 
     // Set up all event listeners
     this.setupListeners();
+
+    // Initialize overlay
+    this.overlay = new HighlightOverlay(this.doc, this.style);
   }
 
   /** Clean up overlay and remove all listeners */
@@ -72,11 +76,11 @@ export class ClickToEditManager {
     }
     this.active = false;
 
-    // Remove all listeners
-    for (const { target, type, handler, options } of this.listeners) {
-      target.removeEventListener(type, handler, options ?? false);
+    // Remove all listeners via AbortController
+    if (this.listenerAbortController) {
+      this.listenerAbortController.abort();
+      this.listenerAbortController = null;
     }
-    this.listeners = [];
 
     // Clean up resize observer
     if (this.resizeObserver) {
@@ -104,82 +108,37 @@ export class ClickToEditManager {
 
   /** Set up all event listeners (absorbed from setupOverlay) */
   private setupListeners(): void {
-    this.listeners = [
-      {
-        target: this.doc,
-        type: 'pointerover',
-        handler: this.throttledPointer,
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'pointermove',
-        handler: this.throttledPointer,
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'pointerleave',
-        handler: (event) => this.handlePointerLeave(event),
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'click',
-        handler: (event) => this.handleClick(event),
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'focusin',
-        handler: (event) => this.handleFocusIn(event),
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'focusout',
-        handler: () => this.handleFocusOut(),
-        options: { capture: true }
-      },
-      {
-        target: this.doc,
-        type: 'keydown',
-        handler: (event) => this.handleKeyDown(event),
-        options: { capture: true }
-      }
-    ];
+    this.listenerAbortController = new AbortController();
+    const { signal } = this.listenerAbortController;
 
+    // Document event listeners
+    this.doc.addEventListener('pointerover', this.throttledPointer, { capture: true, signal });
+    this.doc.addEventListener('pointermove', this.throttledPointer, { capture: true, signal });
+    this.doc.addEventListener('pointerleave', (event) => this.handlePointerLeave(event), {
+      capture: true,
+      signal
+    });
+    this.doc.addEventListener('click', (event) => this.handleClick(event), {
+      capture: true,
+      signal
+    });
+    this.doc.addEventListener('focusin', (event) => this.handleFocusIn(event), {
+      capture: true,
+      signal
+    });
+    this.doc.addEventListener('focusout', () => this.handleFocusOut(), { capture: true, signal });
+    this.doc.addEventListener('keydown', (event) => this.handleKeyDown(event), {
+      capture: true,
+      signal
+    });
+
+    // Layout event listeners
     if (this.view) {
-      this.listeners.push({
-        target: this.view,
-        type: 'scroll',
-        handler: this.refresh,
-        options: { capture: true, passive: true }
-      });
-      this.listeners.push({
-        target: this.doc,
-        type: 'scroll',
-        handler: this.refresh,
-        options: { capture: true, passive: true }
-      });
-      this.listeners.push({
-        target: this.view,
-        type: 'resize',
-        handler: this.refresh,
-        options: { capture: true, passive: true }
-      });
+      this.view.addEventListener('scroll', this.refresh, { capture: true, passive: true, signal });
+      this.doc.addEventListener('scroll', this.refresh, { capture: true, passive: true, signal });
+      this.view.addEventListener('resize', this.refresh, { capture: true, passive: true, signal });
     } else {
-      this.listeners.push({
-        target: this.doc,
-        type: 'scroll',
-        handler: this.refresh,
-        options: { capture: true }
-      });
-    }
-
-    // Attach all listeners
-    for (const { target, type, handler, options } of this.listeners) {
-      target.addEventListener(type, handler, options ?? false);
+      this.doc.addEventListener('scroll', this.refresh, { capture: true, signal });
     }
   }
 

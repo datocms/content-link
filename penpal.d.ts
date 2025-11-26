@@ -3,15 +3,12 @@ declare module 'penpal' {
     [K in keyof T]: T[K] extends Function ? K : never;
   }[keyof T];
 
-  export type AsyncMethodReturns<
-    T,
-    K extends keyof T = FunctionPropertyNames<T>
-  > = {
+  export type AsyncMethodReturns<T, K extends keyof T = FunctionPropertyNames<T>> = {
     [KK in K]: T[KK] extends (...args: any[]) => PromiseLike<any>
       ? T[KK]
       : T[KK] extends (...args: infer A) => infer R
-      ? (...args: A) => Promise<R>
-      : T[KK];
+        ? (...args: A) => Promise<R>
+        : T[KK];
   };
 
   export type CallSender = {

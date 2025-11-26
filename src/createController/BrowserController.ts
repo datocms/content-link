@@ -2,23 +2,20 @@
  * Browser-only implementation that orchestrates stamping and click-to-edit managers.
  * Acts as a lightweight coordinator handling shared concerns like Studio connection and state events.
  */
-import { AsyncMethodReturns, connectToParent } from 'penpal';
+import penpal, { type AsyncMethodReturns } from 'penpal';
 import { inIframe, resolveDocument, toCompletePath } from '../utils/dom.js';
 import { extractItemId, extractItemIds } from '../utils/studio.js';
 import { ClickToEditManager } from './clickToEdit/ClickToEditManager.js';
 import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
-import {
-  AUTOMATIC_STAMP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE,
-} from './domStamping/constants.js';
+import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
 import { StudioMethods } from './studio/types.js';
 import type {
   ClickToEditStyle,
   Controller,
   CreateClickToEditControllerOptions,
-  StampSummary,
+  StampSummary
 } from './types.js';
 
 export class BrowserController implements Controller {
@@ -52,7 +49,7 @@ export class BrowserController implements Controller {
     this.clickToEditManager = new ClickToEditManager({
       doc: this.doc,
       style: this.clickToEditStyle,
-      onEditClick: (editUrl) => this.handleEditClick(editUrl),
+      onEditClick: (editUrl) => this.handleEditClick(editUrl)
     });
 
     this.initializeStudioConnection();
@@ -61,7 +58,7 @@ export class BrowserController implements Controller {
     this.stampingManager = new DomStampingManager({
       root: this.root,
       doc: this.doc,
-      onStamped: (summary) => this.handleStampResult(summary),
+      onStamped: (summary) => this.handleStampResult(summary)
     });
     this.stampingManager.start();
   }
@@ -138,7 +135,7 @@ export class BrowserController implements Controller {
     this.studioConnection?.parent.onStateChange({
       clickToEditEnabled: this.clickToEditManager.isActive(),
       currentPath: this.currentPath,
-      pageItemIds: this.getPageItemIds(),
+      pageItemIds: this.getPageItemIds()
     });
   }
 
@@ -150,8 +147,6 @@ export class BrowserController implements Controller {
     const stampedElements = this.root.querySelectorAll(
       `[${MANUAL_STAMP_ATTRIBUTE}], [${AUTOMATIC_STAMP_ATTRIBUTE}]`
     );
-
-    console.log(stampedElements);
 
     // Collect all edit URLs
     const editUrls: string[] = [];
@@ -178,8 +173,7 @@ export class BrowserController implements Controller {
       }
     } else {
       // Fallback: open in new tab
-      const opener =
-        this.doc.defaultView ?? (typeof window !== 'undefined' ? window : null);
+      const opener = this.doc.defaultView ?? (typeof window !== 'undefined' ? window : null);
 
       opener?.open(editUrl, '_blank', 'noopener,noreferrer');
     }
@@ -195,7 +189,7 @@ export class BrowserController implements Controller {
     }
 
     // Attempt to connect with a 20-second timeout
-    const connection = connectToParent<StudioMethods>({
+    const connection = penpal.connectToParent<StudioMethods>({
       timeout: 20000,
       methods: {
         navigateTo: (payload: { path: string }) => {
@@ -213,8 +207,8 @@ export class BrowserController implements Controller {
         },
         clearHighlight(): void {
           // TODO
-        },
-      },
+        }
+      }
     });
 
     const parent = await connection.promise;
@@ -228,7 +222,7 @@ export class BrowserController implements Controller {
       parent,
       destroy: () => {
         connection.destroy;
-      },
+      }
     };
 
     this.notifyStateChangeToStudio();
