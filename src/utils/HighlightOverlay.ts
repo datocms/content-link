@@ -1,4 +1,11 @@
-import { getDocumentWindow, getResizeObserverCtor, measure } from '../../utils/dom.js';
+import {
+  abortableSleep,
+  getDocumentWindow,
+  getResizeObserverCtor,
+  measure,
+  resolveDocument,
+  waitTwoRafs
+} from './dom.js';
 /**
  * Lightweight view layer that draws a fixed-position rectangle around the
  * active editable element. Keeps all DOM manipulation in one place.
@@ -10,8 +17,10 @@ import {
   DEFAULT_BORDER_WIDTH,
   DEFAULT_OVERLAY_PADDING,
   OVERLAY_Z_INDEX
-} from './constants.js';
-import { rafThrottle } from './throttle.js';
+} from '../createController/clickToEdit/constants.js';
+import { rafThrottle } from './rafThrottle.js';
+
+const FADE_DELAY = 200;
 
 export class HighlightOverlay {
   private overlayElement: HTMLDivElement;
@@ -19,12 +28,10 @@ export class HighlightOverlay {
 
   private resizeObserver: ResizeObserver | null = null;
   private positioningAbortController: AbortController;
+  private pendingAnimationAbortController: AbortController | null = null;
   private throttledUpdatePosition = rafThrottle(() => this.immediateUpdatePosition());
 
-  constructor(
-    private readonly document: Document,
-    readonly targetElement: Element
-  ) {
+  constructor(readonly targetElement: Element) {
     this.overlayElement = this.createOverlayElement();
     document.body.appendChild(this.overlayElement);
 
@@ -34,10 +41,8 @@ export class HighlightOverlay {
     this.positioningAbortController = new AbortController();
     const { signal } = this.positioningAbortController;
 
-    const docWindow = getDocumentWindow(this.document);
-
-    if (docWindow) {
-      docWindow.addEventListener('scroll', this.throttledUpdatePosition, {
+    if (this.window) {
+      this.window.addEventListener('scroll', this.throttledUpdatePosition, {
         capture: true,
         passive: true,
         signal
@@ -47,7 +52,7 @@ export class HighlightOverlay {
         passive: true,
         signal
       });
-      docWindow.addEventListener('resize', this.throttledUpdatePosition, {
+      this.window.addEventListener('resize', this.throttledUpdatePosition, {
         capture: true,
         passive: true,
         signal
@@ -60,7 +65,7 @@ export class HighlightOverlay {
     }
 
     // Set up ResizeObserver
-    const ResizeObserverCtor = getResizeObserverCtor(docWindow);
+    const ResizeObserverCtor = getResizeObserverCtor(this.window);
 
     if (ResizeObserverCtor) {
       this.resizeObserver = new ResizeObserverCtor(() => {
@@ -70,14 +75,57 @@ export class HighlightOverlay {
     }
   }
 
+  get document() {
+    return resolveDocument(this.targetElement);
+  }
+
+  get window() {
+    return getDocumentWindow(this.document);
+  }
+
   dispose(): void {
     this.positioningAbortController.abort();
     this.resizeObserver?.disconnect();
     this.throttledUpdatePosition.cancel();
     this.overlayElement.remove();
+    this.document.body.style.cursor = this.prevCursor || '';
+  }
 
-    if (this.prevCursor) {
-      this.document.body.style.cursor = this.prevCursor;
+  cancelPendingAnimation(): void {
+    this.pendingAnimationAbortController?.abort();
+  }
+
+  async fadeIn(afterDelay: number = 0, abortController?: AbortController): Promise<void> {
+    this.cancelPendingAnimation();
+    this.pendingAnimationAbortController = abortController || new AbortController();
+    const { signal } = this.pendingAnimationAbortController;
+
+    try {
+      this.overlayElement.style.opacity = '0';
+      await waitTwoRafs();
+      await abortableSleep(afterDelay, signal);
+      this.overlayElement.style.opacity = '1';
+    } catch (_) {
+      // animation cancelled
+    }
+  }
+
+  async disposeWithFadeOut(
+    afterDelay: number = 0,
+    abortController?: AbortController
+  ): Promise<void> {
+    this.cancelPendingAnimation();
+    this.pendingAnimationAbortController = abortController || new AbortController();
+    const { signal } = this.pendingAnimationAbortController;
+
+    try {
+      await abortableSleep(afterDelay, signal);
+      this.overlayElement.style.opacity = '0';
+      await abortableSleep(FADE_DELAY + 50, signal);
+    } catch (_) {
+      // cancelled
+    } finally {
+      this.dispose();
     }
   }
 
@@ -95,12 +143,13 @@ export class HighlightOverlay {
     el.style.pointerEvents = 'none';
     el.style.cursor = 'pointer';
     el.style.zIndex = OVERLAY_Z_INDEX;
-    el.style.display = 'none';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    el.style.transition = `opacity ${FADE_DELAY}ms ease-in-out`;
     el.setAttribute('aria-hidden', 'true');
     return el;
   }
 
-  /** Update overlay position in response to scroll/resize/element size changes */
   private immediateUpdatePosition(): void {
     const rect = measure(this.targetElement);
     this.overlayElement.style.zIndex = this.computeOverlayZIndex(this.targetElement);
@@ -109,30 +158,21 @@ export class HighlightOverlay {
       return;
     }
 
-    this.overlayElement.style.display = 'block';
     this.overlayElement.style.top = `${rect.top - DEFAULT_OVERLAY_PADDING}px`;
     this.overlayElement.style.left = `${rect.left - DEFAULT_OVERLAY_PADDING}px`;
     this.overlayElement.style.width = `${rect.width + DEFAULT_OVERLAY_PADDING * 2}px`;
     this.overlayElement.style.height = `${rect.height + DEFAULT_OVERLAY_PADDING * 2}px`;
   }
 
-  /**
-   * Determine an appropriate z-index for the overlay so it does not exceed
-   * the stacking level of the element it is highlighting. We look for the
-   * nearest ancestor (including the element itself) with a numeric z-index
-   * and use that value. If none is found, we default to '0'.
-   */
   private computeOverlayZIndex(el: Element): string {
-    const view = getDocumentWindow(this.document);
-
-    if (!view) {
+    if (!this.window) {
       return '0';
     }
 
     let node: Element | null = el;
     let lastNumeric: number | null = null;
-    while (node && node instanceof view.Element) {
-      const style = view.getComputedStyle(node);
+    while (node && node instanceof this.window.Element) {
+      const style = this.window.getComputedStyle(node);
       const z = style.zIndex;
       if (z !== 'auto') {
         const parsed = Number(z);

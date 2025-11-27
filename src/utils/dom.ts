@@ -1,8 +1,6 @@
-/**
- * Resolve the document associated with the provided root node. Falls back to
- * the global document when available and returns null in non-DOM environments.
- */
-export function resolveDocument(root: ParentNode): Document | null {
+import { compute as computeScrollIntoView, Options } from 'compute-scroll-into-view';
+
+export function resolveDocument(root: ParentNode): Document {
   const docCtor = typeof Document !== 'undefined' ? Document : undefined;
   const globalDoc = typeof document !== 'undefined' ? document : undefined;
 
@@ -10,7 +8,13 @@ export function resolveDocument(root: ParentNode): Document | null {
     return root as Document;
   }
 
-  return root.ownerDocument ?? globalDoc ?? null;
+  const finalDoc = root.ownerDocument ?? globalDoc ?? null;
+
+  if (!finalDoc) {
+    throw new Error('Unable to resolve document');
+  }
+
+  return finalDoc;
 }
 
 export function inBrowser() {
@@ -80,4 +84,69 @@ export function measure(
     width: rect.width,
     height: rect.height
   };
+}
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (ms <= 0) {
+      // Still respect immediate abort
+      if (signal.aborted) {
+        reject(new Error('Animation cancelled'));
+      } else {
+        resolve();
+      }
+      return;
+    }
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      reject(new Error('Animation cancelled'));
+    };
+
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    signal.addEventListener('abort', onAbort);
+  });
+}
+
+export async function waitTwoRafs() {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    })
+  );
+}
+
+export function inViewport(element: Element) {
+  const document = resolveDocument(element);
+  const rect = element.getBoundingClientRect();
+  const docWindow = getDocumentWindow(document);
+
+  if (!docWindow) {
+    return false;
+  }
+
+  const viewportHeight = docWindow.innerHeight || document.documentElement.clientHeight;
+  const viewportWidth = docWindow.innerWidth || document.documentElement.clientWidth;
+
+  return (
+    rect.top < viewportHeight && rect.bottom > 0 && rect.left < viewportWidth && rect.right > 0
+  );
+}
+
+export function getScrollDistance(el: Element, options: Options) {
+  const actions = computeScrollIntoView(el, options);
+
+  return actions.reduce(
+    (sum, action) => sum + Math.abs(action.top || 0) + Math.abs(action.left || 0),
+    0
+  );
 }

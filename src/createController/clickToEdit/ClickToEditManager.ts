@@ -2,10 +2,14 @@
  * Manages click-to-edit functionality: highlights editable regions under the pointer
  * and invokes callback when clicked. Absorbs all logic from setup.ts into a class-based manager.
  */
-import { isKeyboardEvent, isMouseEvent, isMousePointerEvent } from '../../utils/dom.js';
-import { HighlightOverlay } from './HighlightOverlay.js';
+import {
+  isKeyboardEvent,
+  isMouseEvent,
+  isMousePointerEvent,
+} from '../../utils/dom.js';
+import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
+import { rafThrottle } from '../../utils/rafThrottle.js';
 import { findEditableTarget } from './findEditableTarget.js';
-import { rafThrottle } from './throttle.js';
 
 export class ClickToEditManager {
   private highlightOverlay: HighlightOverlay | null = null;
@@ -33,16 +37,44 @@ export class ClickToEditManager {
 
     const options: AddEventListenerOptions = {
       capture: true,
-      signal: this.listenerAbortController.signal
+      signal: this.listenerAbortController.signal,
     };
 
-    this.document.addEventListener('pointerover', this.throttledOnPointerMove, options);
-    this.document.addEventListener('pointermove', this.throttledOnPointerMove, options);
-    this.document.addEventListener('pointerleave', (event) => this.onPointerLeave(event), options);
-    this.document.addEventListener('click', (event) => this.onClick(event), options);
-    this.document.addEventListener('focusin', (event) => this.onFocusIn(event), options);
-    this.document.addEventListener('focusout', () => this.onFocusOut(), options);
-    this.document.addEventListener('keydown', (event) => this.onKeyDown(event), options);
+    this.document.addEventListener(
+      'pointerover',
+      this.throttledOnPointerMove,
+      options
+    );
+    this.document.addEventListener(
+      'pointermove',
+      this.throttledOnPointerMove,
+      options
+    );
+    this.document.addEventListener(
+      'pointerleave',
+      (event) => this.onPointerLeave(event),
+      options
+    );
+    this.document.addEventListener(
+      'click',
+      (event) => this.onClick(event),
+      options
+    );
+    this.document.addEventListener(
+      'focusin',
+      (event) => this.onFocusIn(event),
+      options
+    );
+    this.document.addEventListener(
+      'focusout',
+      () => this.onFocusOut(),
+      options
+    );
+    this.document.addEventListener(
+      'keydown',
+      (event) => this.onKeyDown(event),
+      options
+    );
   }
 
   private immediateOnPointerMoveEvent(event: Event) {
@@ -76,7 +108,11 @@ export class ClickToEditManager {
     if (!isKeyboardEvent(event)) {
       return;
     }
-    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') {
+    if (
+      event.key !== 'Enter' &&
+      event.key !== ' ' &&
+      event.key !== 'Spacebar'
+    ) {
       return;
     }
 
@@ -119,9 +155,14 @@ export class ClickToEditManager {
 
   private highlightElement(rawTargetElement: Element | null | undefined) {
     const targetElement =
-      rawTargetElement && !rawTargetElement.isConnected ? null : rawTargetElement;
+      rawTargetElement && !rawTargetElement.isConnected
+        ? null
+        : rawTargetElement;
 
-    if (this.highlightOverlay && this.highlightOverlay.targetElement === targetElement) {
+    if (
+      this.highlightOverlay &&
+      this.highlightOverlay.targetElement === targetElement
+    ) {
       return;
     }
 
@@ -131,7 +172,7 @@ export class ClickToEditManager {
     }
 
     if (targetElement) {
-      this.highlightOverlay = new HighlightOverlay(this.document, targetElement);
+      this.highlightOverlay = new HighlightOverlay(targetElement);
     }
   }
 

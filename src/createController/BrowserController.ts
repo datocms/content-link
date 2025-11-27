@@ -10,16 +10,17 @@ import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import { AUTOMATIC_STAMP_ATTRIBUTE, MANUAL_STAMP_ATTRIBUTE } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
+import { FlashAllManager } from './flashAll/FlashAllManager.js';
 import type { StudioMethods } from './studio/types.js';
 import type { Controller, CreateControllerOptions, StampSummary } from './types.js';
 
 export class BrowserController implements Controller {
-  private readonly root: ParentNode;
-  private readonly doc: Document;
+  private readonly wrapperElement: ParentNode;
   private readonly onNavigateTo?: (path: string) => void;
   private readonly eventsManager: EventsManager;
   private readonly clickToEditManager: ClickToEditManager;
   private readonly stampingManager: DomStampingManager;
+  private readonly flashAllManager: FlashAllManager;
 
   private studioConnection: {
     parent: AsyncMethodReturns<StudioMethods>;
@@ -31,35 +32,30 @@ export class BrowserController implements Controller {
   private currentPath = toCompletePath(document.location.toString());
 
   constructor(options: CreateControllerOptions) {
-    this.root = options.root ?? document;
-    this.doc = this.ensureDocument(this.root);
+    this.wrapperElement = options.root ?? document;
     this.onNavigateTo = options.onNavigateTo;
 
     // Initialize events manager
-    this.eventsManager = new EventsManager({ doc: this.doc });
+    this.eventsManager = new EventsManager({
+      doc: this.document
+    });
 
     // Initialize click-to-edit manager (but don't start it yet)
-    this.clickToEditManager = new ClickToEditManager(this.doc, (editUrl) =>
+    this.clickToEditManager = new ClickToEditManager(this.document, (editUrl) =>
       this.handleEditClick(editUrl)
     );
 
     this.initializeStudioConnection();
 
-    // Start stamping immediately
-    this.stampingManager = new DomStampingManager({
-      root: this.root,
-      doc: this.doc,
-      onStamped: (summary) => this.handleStampResult(summary)
-    });
-    this.stampingManager.start();
+    this.stampingManager = new DomStampingManager(this.wrapperElement, (summary) =>
+      this.handleStampResult(summary)
+    );
+
+    this.flashAllManager = new FlashAllManager(this.wrapperElement);
   }
 
-  private ensureDocument(root: ParentNode): Document {
-    const resolved = resolveDocument(root);
-    if (!resolved) {
-      throw new Error('Unable to resolve document for click-to-edit');
-    }
-    return resolved;
+  get document() {
+    return resolveDocument(this.wrapperElement);
   }
 
   /** Permanently shut down the controller and clear generated attributes. */
@@ -67,16 +63,13 @@ export class BrowserController implements Controller {
     if (this.disposed) {
       return;
     }
-    // Disable click-to-edit first
-    this.clickToEditManager.stop();
-    // Stop stamping and clear stamps
-    this.stampingManager.stop();
 
-    // Clean up Studio connection
-    if (this.studioConnection) {
-      this.studioConnection.destroy();
-    }
     this.disposed = true;
+
+    this.clickToEditManager.stop();
+    this.stampingManager.dispose();
+    this.flashAllManager.dispose();
+    this.studioConnection?.destroy();
   }
 
   /** Whether the controller has been disposed. */
@@ -134,22 +127,18 @@ export class BrowserController implements Controller {
    * Gather all item IDs from stamped elements in the page.
    */
   private getPageItemIds(): string[] {
-    // Find all stamped elements in the DOM
-    const stampedElements = this.root.querySelectorAll(
+    const stampedElements = this.wrapperElement.querySelectorAll(
       `[${MANUAL_STAMP_ATTRIBUTE}], [${AUTOMATIC_STAMP_ATTRIBUTE}]`
     );
 
     // Collect all edit URLs
-    const editUrls: string[] = [];
+    const editUrls = new Set<string>();
     for (const element of stampedElements) {
-      const target = findEditableTarget(element as Element);
-      if (target) {
-        editUrls.push(target.editUrl);
-      }
+      const target = findEditableTarget(element as Element)!;
+      editUrls.add(target.editUrl);
     }
 
-    // Extract unique item IDs from edit URLs
-    return extractItemIds(editUrls);
+    return extractItemIds(Array.from(editUrls));
   }
 
   /**
@@ -164,7 +153,7 @@ export class BrowserController implements Controller {
       }
     } else {
       // Fallback: open in new tab
-      const opener = this.doc.defaultView ?? (typeof window !== 'undefined' ? window : null);
+      const opener = this.document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 
       opener?.open(editUrl, '_blank', 'noopener,noreferrer');
     }
