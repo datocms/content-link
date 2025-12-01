@@ -16,7 +16,8 @@ import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import { STAMPED_ELEMENTS_SELECTOR } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
-import { FlashAllManager } from './flashAll/FlashAllManager.js';
+import { FlashAllManager } from './flash/FlashAllManager.js';
+import { FlashItemManager } from './flash/FlashSingleManager.js';
 import type { Controller, CreateControllerOptions, StampSummary } from './types.js';
 import type { WebPreviewsPluginMethods } from './webPreviewsPlugin/types.js';
 
@@ -27,6 +28,7 @@ export class BrowserController implements Controller {
   private readonly clickToEditManager: ClickToEditManager;
   private readonly stampingManager: DomStampingManager;
   private readonly flashAllManager: FlashAllManager;
+  private flashItemManager: FlashItemManager | null = null;
   private listenerAbortController: AbortController;
   private temporaryState: undefined | { enabled: boolean };
 
@@ -104,6 +106,7 @@ export class BrowserController implements Controller {
     this.clickToEditManager.deactivate();
     this.stampingManager.dispose();
     this.flashAllManager.dispose();
+    this.flashItemManager?.dispose();
     this.webPreviewsPluginConnection?.destroy();
     this.listenerAbortController.abort();
   }
@@ -151,6 +154,22 @@ export class BrowserController implements Controller {
     }
 
     this.flashAllManager.flash(scrollToNearestTarget);
+  }
+
+  flashItem(itemId: string, scrollToNearestTarget = false) {
+    if (this.disposed) {
+      return;
+    }
+
+    this.flashItemManager?.dispose();
+
+    const flashSingleManager = new FlashItemManager(this.wrapperElement, itemId);
+    flashSingleManager.flash(scrollToNearestTarget);
+    this.flashItemManager = flashSingleManager;
+
+    setTimeout(() => {
+      flashSingleManager.dispose();
+    }, 1000);
   }
 
   private handleStampResult(summary: StampSummary): void {
@@ -201,8 +220,14 @@ export class BrowserController implements Controller {
         navigateTo: (payload: { path: string }) => {
           this.onNavigateTo?.(payload.path);
         },
-        flash: (payload: { scrollToNearestTarget: boolean }) => {
+        flashAll: (payload: { scrollToNearestTarget: boolean }) => {
           this.flashAll(payload.scrollToNearestTarget);
+        },
+        flashItem: (payload: {
+          itemId: string;
+          scrollToNearestTarget: boolean;
+        }) => {
+          this.flashItem(payload.itemId, payload.scrollToNearestTarget);
         },
         setClickToEditEnabled: (
           payload: { enabled: true; flash: { scrollToNearestTarget: boolean } } | { enabled: false }

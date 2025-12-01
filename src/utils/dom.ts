@@ -156,3 +156,45 @@ export function getScrollDistance(el: Element, options: Options) {
 
   return distance;
 }
+
+/**
+ * Scrolls to the nearest target element if none of the targets are currently visible.
+ * Finds the target that requires the least scrolling distance and smoothly scrolls to it.
+ *
+ * @param targets - Array of elements to consider for scrolling
+ * @param signal - AbortSignal to cancel the operation
+ * @returns Promise that resolves when scrolling is complete or if no scrolling is needed
+ */
+export async function maybeScrollToNearestTarget(
+  targets: Element[],
+  signal: AbortSignal
+): Promise<void> {
+  const someTargetIsVisible = targets.some(inViewport);
+
+  if (someTargetIsVisible) {
+    return;
+  }
+
+  let best: Element | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const target of targets) {
+    const dist = getScrollDistance(target, {
+      scrollMode: 'if-needed',
+      block: 'center',
+      inline: 'nearest'
+    });
+
+    if (dist < bestDistance) {
+      bestDistance = dist;
+      best = target;
+    }
+  }
+
+  if (!best) {
+    return;
+  }
+
+  best.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  await abortableSleep(400, signal);
+}

@@ -79,6 +79,7 @@ Returns a controller to manage DOM stamping and click-to-edit overlays.
 - `isDisposed()`: Returns `true` if the controller has been disposed
 - `dispose()`: Permanently disconnects observers and cleans up. After dispose, the controller cannot be re-enabled; create a new one if needed
 - `flashAll(scrollToNearestTarget?: boolean)`: Briefly highlight all editable elements with an animated effect. Optionally scroll to the nearest editable element if none are visible.
+- `flashItem(itemId: string, scrollToNearestTarget?: boolean)`: Briefly highlight a specific editable item with an animated effect. The `itemId` corresponds to the record ID in DatoCMS. Optionally scroll to the item if not visible.
 
 **Keyboard shortcuts:**
 - **Alt/Option key**: Hold down to temporarily enable/disable click-to-edit mode. This toggles the current state and reverts when the key is released.

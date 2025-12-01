@@ -1,36 +1,41 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
-import {
-  abortableSleep,
-  getScrollDistance,
-  inViewport,
-  sleep,
-  waitTwoRafs
-} from '../../utils/dom.js';
+import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
+import { extractInfo } from '../../utils/editUrl.js';
 import { findEditableTarget } from '../clickToEdit/findEditableTarget.js';
 import { STAMPED_ELEMENTS_SELECTOR } from '../domStamping/constants.js';
-const STAGGER_DELAY = 10;
+import { STAGGER_DELAY } from './FlashAllManager.js';
 
-export class FlashAllManager {
+export class FlashItemManager {
   private overlays: HighlightOverlay[] = [];
   private pendingAnimationAbortController: AbortController | null = null;
+  private disposed: boolean = false;
 
-  constructor(private readonly wrapperElement: ParentNode) {}
+  constructor(
+    private readonly wrapperElement: ParentNode,
+    private readonly itemId: string
+  ) {}
 
   async flash(scrollToNearestTarget: boolean) {
+    if (this.disposed) return;
     await waitTwoRafs();
     this.fadeIn(scrollToNearestTarget);
-    await sleep(800);
+    await sleep(1500);
     this.fadeOut();
   }
 
   private async fadeIn(scrollToNearestTarget: boolean) {
+    if (this.disposed) return;
     const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
     const targetsSet = new Set<HTMLElement>();
     for (const element of stampedElements) {
       const target = findEditableTarget(element as Element);
       if (target) {
-        targetsSet.add(target.element);
+        // Filter by itemId - parse editUrl to extract itemId
+        const editUrlInfo = extractInfo(target.editUrl);
+        if (editUrlInfo && editUrlInfo.itemId === this.itemId) {
+          targetsSet.add(target.element);
+        }
       }
     }
 
@@ -49,7 +54,7 @@ export class FlashAllManager {
 
     try {
       if (scrollToNearestTarget) {
-        await this.maybeScrollToNearestTarget(targets, signal);
+        await maybeScrollToNearestTarget(targets, signal);
       }
 
       targets.map((target, index) => {
@@ -63,6 +68,7 @@ export class FlashAllManager {
   }
 
   private fadeOut() {
+    if (this.disposed) return;
     this.cancelPendingAnimation();
 
     const abortController = new AbortController();
@@ -75,6 +81,8 @@ export class FlashAllManager {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.instantlyDisposeOverlays();
   }
 
@@ -90,36 +98,5 @@ export class FlashAllManager {
       overlay.dispose();
     });
     this.overlays = [];
-  }
-
-  private async maybeScrollToNearestTarget(targets: Element[], signal: AbortSignal) {
-    const someTargetIsVisible = targets.some(inViewport);
-
-    if (someTargetIsVisible) {
-      return;
-    }
-
-    let best: Element | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    for (const target of targets) {
-      const dist = getScrollDistance(target, {
-        scrollMode: 'if-needed',
-        block: 'center',
-        inline: 'nearest'
-      });
-
-      if (dist < bestDistance) {
-        bestDistance = dist;
-        best = target;
-      }
-    }
-
-    if (!best) {
-      return;
-    }
-
-    best.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await abortableSleep(400, signal);
   }
 }
