@@ -6,3 +6,5 @@
 export const AUTOMATIC_STAMP_ATTRIBUTE = 'data-datocms-stega';
 export const MANUAL_STAMP_ATTRIBUTE = 'data-datocms-edit-url';
 export const EDIT_GROUP_ATTRIBUTE = 'data-datocms-edit-group';
+
+export const STAMPED_ELEMENTS_SELECTOR = `[${MANUAL_STAMP_ATTRIBUTE}], [${AUTOMATIC_STAMP_ATTRIBUTE}]`;

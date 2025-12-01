@@ -4,8 +4,8 @@ import {
   AUTOMATIC_STAMP_ATTRIBUTE,
   EDIT_GROUP_ATTRIBUTE,
   MANUAL_STAMP_ATTRIBUTE
-} from '../src/createOverlaysController/stamp/constants.js';
-import { createOverlaysController } from '../src/index.js';
+} from '../src/createController/domStamping/constants.js';
+import { createController } from '../src/index.js';
 import * as decodeModule from '../src/stega/decode.js';
 
 const { vercelStegaCombine } = stega;
@@ -42,7 +42,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('createOverlaysController', () => {
+describe('createController', () => {
   it('stamps attributes from stega content', () => {
     const encodedText = vercelStegaCombine('Hero headline', {
       origin: 'datocms.com',
@@ -61,8 +61,7 @@ describe('createOverlaysController', () => {
       </main>
     `;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const heroText = document.getElementById('hero-text') as HTMLElement;
     const heroImage = document.getElementById('hero-image') as HTMLImageElement;
@@ -99,8 +98,8 @@ describe('createOverlaysController', () => {
 
     const decodeSpy = vi.spyOn(decodeModule, 'decodeStega');
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
+    controller.enableClickToEdit();
 
     decodeSpy.mockClear();
 
@@ -138,8 +137,7 @@ describe('createOverlaysController', () => {
     document.body.innerHTML = `<section id="container"></section>`;
     const container = document.getElementById('container') as HTMLElement;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const encoded = vercelStegaCombine('Fresh content', {
       origin: 'datocms.com',
@@ -178,8 +176,7 @@ describe('createOverlaysController', () => {
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const [message, elementArg] = warnSpy.mock.calls[0];
@@ -209,8 +206,7 @@ describe('createOverlaysController', () => {
     const encodedParagraph = document.getElementById('encoded') as HTMLElement;
     encodedParagraph.textContent = encoded;
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const manual = document.getElementById('manual') as HTMLElement;
     expect(encodedParagraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
@@ -246,8 +242,7 @@ describe('createOverlaysController', () => {
     const wrappedImage = document.getElementById('wrapped-image') as HTMLImageElement;
     wrappedImage.getBoundingClientRect = () => createRect(0, 0, 0, 0);
 
-    const controller = createOverlaysController();
-    controller.enable();
+    const controller = createController();
 
     const textWrapper = document.getElementById('text-wrapper') as HTMLElement;
     const innerSpan = document.getElementById('wrapped') as HTMLElement;
@@ -264,67 +259,5 @@ describe('createOverlaysController', () => {
     expect(wrappedImage.getAttribute('alt')).toBe('Wrapped image');
 
     controller.dispose();
-  });
-
-  it('can disable and re-enable visual editing without losing context', () => {
-    const firstEncoded = vercelStegaCombine('Primary title', {
-      origin: 'datocms.com',
-      href: 'item-1#fieldPath=content.title'
-    });
-
-    document.body.innerHTML = `<h1 id="headline">${firstEncoded}</h1>`;
-
-    const controller = createOverlaysController();
-    controller.enable();
-
-    const heading = document.getElementById('headline') as HTMLElement;
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=content.title');
-    expect(heading.textContent).toBe('Primary title');
-
-    controller.disable();
-
-    const secondEncoded = vercelStegaCombine('Updated title', {
-      origin: 'datocms.com',
-      href: 'item-2#fieldPath=content.title'
-    });
-
-    heading.textContent = secondEncoded;
-
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=content.title');
-    expect(heading.textContent).toBe(secondEncoded);
-
-    controller.enable();
-
-    expect(heading.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-2#fieldPath=content.title');
-    expect(heading.textContent).toBe('Updated title');
-
-    controller.dispose();
-  });
-
-  it('exposes state helpers for manual toggle flows', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    document.body.innerHTML = `<p id="content"></p>`;
-
-    const controller = createOverlaysController();
-
-    expect(controller.isEnabled()).toBe(false);
-    expect(controller.isDisposed()).toBe(false);
-
-    controller.enable();
-    expect(controller.isEnabled()).toBe(true);
-
-    controller.toggle();
-    expect(controller.isEnabled()).toBe(false);
-
-    controller.toggle();
-    expect(controller.isEnabled()).toBe(true);
-
-    controller.dispose();
-    expect(controller.isDisposed()).toBe(true);
-    expect(controller.isEnabled()).toBe(false);
-
-    controller.enable();
-    expect(controller.isEnabled()).toBe(false);
   });
 });
