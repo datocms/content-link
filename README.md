@@ -35,6 +35,8 @@ const controller = createController();
 controller.enableClickToEdit();
 ```
 
+**Note:** You can also skip calling `enableClickToEdit()` and temporarily enable click-to-edit mode on-demand by holding down the **Alt/Option** key. The mode will be active while the key is held and automatically disable when released.
+
 That's all you need for the majority of projects! If you see overlays and deep links opening the correct records, your setup is complete!
 
 ---
