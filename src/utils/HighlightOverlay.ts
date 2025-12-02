@@ -30,7 +30,10 @@ export class HighlightOverlay {
   private pendingAnimationAbortController: AbortController | null = null;
   private throttledUpdatePosition = rafThrottle(() => this.immediateUpdatePosition());
 
-  constructor(readonly targetElement: HTMLElement) {
+  constructor(
+    readonly targetElement: HTMLElement,
+    readonly onDispose?: () => void
+  ) {
     this.overlayElement = this.createOverlayElement();
     document.body.appendChild(this.overlayElement);
 
@@ -80,6 +83,7 @@ export class HighlightOverlay {
   }
 
   dispose(): void {
+    this.onDispose?.();
     this.positioningAbortController.abort();
     this.resizeObserver?.disconnect();
     this.throttledUpdatePosition.cancel();

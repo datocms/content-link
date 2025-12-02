@@ -7,6 +7,7 @@ import {
   getDocumentWindow,
   inIframe,
   isKeyboardEvent,
+  isMouseEvent,
   resolveDocument,
   toCompletePath
 } from '../utils/dom.js';
@@ -69,6 +70,11 @@ export class BrowserController implements Controller {
     });
 
     this.document.addEventListener('keyup', (event) => this.onKeyUp(event), {
+      capture: true,
+      signal: this.listenerAbortController.signal
+    });
+
+    this.document.addEventListener('click', (event) => this.onClick(event), {
       capture: true,
       signal: this.listenerAbortController.signal
     });
@@ -274,13 +280,38 @@ export class BrowserController implements Controller {
     this.disableTemporaryClickToEditState();
   }
 
+  private onClick(event: Event) {
+    if (!isMouseEvent(event) || event.button !== 0) {
+      return;
+    }
+
+    // Pressing "alt" during a click often means something for the browser
+    // (ie. download the link instead of opening). If click-to-edit is
+    // temporarly disabled, it means we're pressing "alt". So here we
+    // prevent the click, and generate a new one with no "alt".
+
+    if (this.temporaryState && !this.temporaryState.enabled && event.altKey) {
+      event.preventDefault();
+
+      const newClick = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+
+      (event.target as HTMLElement).dispatchEvent(newClick);
+    }
+  }
+
   private enableTemporaryClickToEditState() {
     if (this.clickToEditManager.isActive()) {
       this.temporaryState = { enabled: false };
       this.disableClickToEdit();
+      this.flashAllManager.fadeOut();
     } else {
       this.temporaryState = { enabled: true };
-      this.enableClickToEdit({ scrollToNearestTarget: true });
+      this.enableClickToEdit();
+      this.flashAllManager.fadeIn(true);
     }
   }
 
@@ -291,8 +322,10 @@ export class BrowserController implements Controller {
 
     if (this.temporaryState.enabled) {
       this.disableClickToEdit();
+      this.flashAllManager.fadeOut();
     } else {
-      this.enableClickToEdit({ scrollToNearestTarget: true });
+      this.enableClickToEdit();
+      this.flashAllManager.fadeIn(true);
     }
 
     this.temporaryState = undefined;

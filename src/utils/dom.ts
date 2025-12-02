@@ -166,7 +166,7 @@ export function getScrollDistance(el: Element, options: Options) {
  * @returns Promise that resolves when scrolling is complete or if no scrolling is needed
  */
 export async function maybeScrollToNearestTarget(
-  targets: Element[],
+  targets: HTMLElement[],
   signal: AbortSignal
 ): Promise<void> {
   const someTargetIsVisible = targets.some(inViewport);
@@ -175,7 +175,7 @@ export async function maybeScrollToNearestTarget(
     return;
   }
 
-  let best: Element | null = null;
+  let best: HTMLElement | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
 
   for (const target of targets) {
@@ -185,7 +185,7 @@ export async function maybeScrollToNearestTarget(
       inline: 'nearest'
     });
 
-    if (dist < bestDistance) {
+    if (dist < bestDistance && isElementVisible(target)) {
       bestDistance = dist;
       best = target;
     }
@@ -196,5 +196,26 @@ export async function maybeScrollToNearestTarget(
   }
 
   best.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  await abortableSleep(400, signal);
+  await abortableSleep(500, signal);
+}
+
+export function isElementVisible(el: HTMLElement | null): boolean {
+  if (!el) return false;
+
+  const style = window.getComputedStyle(el);
+
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false;
+  }
+
+  if (el.offsetWidth === 0 && el.offsetHeight === 0) {
+    return false;
+  }
+
+  const parent = el.parentElement;
+  if (parent) {
+    return isElementVisible(parent);
+  }
+
+  return true;
 }

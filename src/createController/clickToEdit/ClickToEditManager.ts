@@ -8,7 +8,6 @@ import { rafThrottle } from '../../utils/rafThrottle.js';
 import { findEditableTarget } from './findEditableTarget.js';
 
 export class ClickToEditManager {
-  private prevCursor: string | null = null;
   private highlightOverlay: HighlightOverlay | null = null;
   private listenerAbortController: AbortController | null = null;
 
@@ -127,15 +126,16 @@ export class ClickToEditManager {
     }
 
     if (this.highlightOverlay) {
-      this.highlightOverlay.targetElement.style.cursor = this.prevCursor || '';
       this.highlightOverlay.dispose();
       this.highlightOverlay = null;
     }
 
     if (targetElement) {
-      this.prevCursor = targetElement.style.cursor;
+      const prevCursor = targetElement.style.cursor;
       targetElement.style.cursor = 'pointer';
-      this.highlightOverlay = new HighlightOverlay(targetElement);
+      this.highlightOverlay = new HighlightOverlay(targetElement, () => {
+        targetElement.style.cursor = prevCursor;
+      });
     }
   }
 

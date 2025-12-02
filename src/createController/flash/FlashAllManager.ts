@@ -15,14 +15,15 @@ export class FlashAllManager {
   async flash(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
 
-    await waitTwoRafs();
     this.fadeIn(scrollToNearestTarget);
-    await sleep(800);
+    await sleep(1500);
     this.fadeOut();
   }
 
-  private async fadeIn(scrollToNearestTarget: boolean) {
+  async fadeIn(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
+
+    await waitTwoRafs();
 
     const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
@@ -52,9 +53,11 @@ export class FlashAllManager {
         await maybeScrollToNearestTarget(targets, signal);
       }
 
+      const targetsCount = targets.length;
+
       targets.map((target, index) => {
         const overlay = new HighlightOverlay(target);
-        overlay.fadeIn(index * STAGGER_DELAY, abortController);
+        overlay.fadeIn(targetsCount < 50 ? index * STAGGER_DELAY : 0, abortController);
         this.overlays.push(overlay);
       });
     } catch (_) {
@@ -62,15 +65,17 @@ export class FlashAllManager {
     }
   }
 
-  private fadeOut() {
+  fadeOut() {
     if (this.disposed) return;
 
     this.cancelPendingAnimation();
 
     const abortController = new AbortController();
 
+    const overlaysCount = this.overlays.length;
+
     this.overlays.map((overlay, index) => {
-      overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController);
+      overlay.disposeWithFadeOut(overlaysCount < 50 ? index * STAGGER_DELAY : 0, abortController);
     });
 
     this.overlays = [];
