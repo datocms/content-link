@@ -10,25 +10,18 @@ import {
   DEFAULT_OVERLAY_PADDING,
   OVERLAY_Z_INDEX
 } from '../createController/clickToEdit/constants.js';
-import {
-  abortableSleep,
-  getDocumentWindow,
-  getResizeObserverCtor,
-  measure,
-  resolveDocument,
-  waitTwoRafs
-} from './dom.js';
-import { rafThrottle } from './rafThrottle.js';
+import { abortableSleep, getDocumentWindow, measure, resolveDocument, waitTwoRafs } from './dom.js';
+import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
+import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
 const FADE_DELAY = 200;
 
 export class HighlightOverlay {
   private overlayElement: HTMLDivElement;
 
-  private resizeObserver: ResizeObserver | null = null;
-  private positioningAbortController: AbortController;
+  private resizeUnobserve: (() => void) | null = null;
+  private scrollResizeUnsubscribe: (() => void) | null = null;
   private pendingAnimationAbortController: AbortController | null = null;
-  private throttledUpdatePosition = rafThrottle(() => this.immediateUpdatePosition());
 
   constructor(
     readonly targetElement: HTMLElement,
@@ -37,40 +30,16 @@ export class HighlightOverlay {
     this.overlayElement = this.createOverlayElement();
     document.body.appendChild(this.overlayElement);
 
-    this.positioningAbortController = new AbortController();
-    const { signal } = this.positioningAbortController;
+    const coordinator = getScrollResizeCoordinator(this.document);
+    this.scrollResizeUnsubscribe = coordinator.subscribe(() => {
+      this.updatePosition();
+    });
 
-    if (this.window) {
-      this.window.addEventListener('scroll', this.throttledUpdatePosition, {
-        capture: true,
-        passive: true,
-        signal
+    const sharedObserver = getSharedResizeObserver(this.window);
+    if (sharedObserver) {
+      this.resizeUnobserve = sharedObserver.observe(targetElement, () => {
+        this.updatePosition();
       });
-      this.document.addEventListener('scroll', this.throttledUpdatePosition, {
-        capture: true,
-        passive: true,
-        signal
-      });
-      this.window.addEventListener('resize', this.throttledUpdatePosition, {
-        capture: true,
-        passive: true,
-        signal
-      });
-    } else {
-      this.document.addEventListener('scroll', this.throttledUpdatePosition, {
-        capture: true,
-        signal
-      });
-    }
-
-    // Set up ResizeObserver
-    const ResizeObserverCtor = getResizeObserverCtor(this.window);
-
-    if (ResizeObserverCtor) {
-      this.resizeObserver = new ResizeObserverCtor(() => {
-        this.throttledUpdatePosition();
-      });
-      this.resizeObserver.observe(targetElement);
     }
   }
 
@@ -84,9 +53,8 @@ export class HighlightOverlay {
 
   dispose(): void {
     this.onDispose?.();
-    this.positioningAbortController.abort();
-    this.resizeObserver?.disconnect();
-    this.throttledUpdatePosition.cancel();
+    this.scrollResizeUnsubscribe?.();
+    this.resizeUnobserve?.();
     this.overlayElement.remove();
   }
 
@@ -145,7 +113,7 @@ export class HighlightOverlay {
     return el;
   }
 
-  private immediateUpdatePosition(): void {
+  private updatePosition(): void {
     const rect = measure(this.targetElement);
     this.overlayElement.style.zIndex = this.computeOverlayZIndex(this.targetElement);
 

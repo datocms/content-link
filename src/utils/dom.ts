@@ -58,15 +58,6 @@ export function getDocumentWindow(document: Document) {
   return document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 }
 
-export function getResizeObserverCtor(window: Window | null): typeof ResizeObserver | undefined {
-  if (window && 'ResizeObserver' in window) {
-    // biome-ignore lint/suspicious/noExplicitAny: Window type doesn't include ResizeObserver, but it exists at runtime
-    return (window as any).ResizeObserver;
-  } else if (typeof ResizeObserver !== 'undefined') {
-    return ResizeObserver;
-  }
-}
-
 /** Compute the bounding box for the target element, ignoring zero-size nodes. */
 export function measure(
   el: Element
