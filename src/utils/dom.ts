@@ -187,7 +187,8 @@ export async function maybeScrollToNearestTarget(
   }
 
   best.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  await abortableSleep(500, signal);
+
+  await waitUntilScrolledToTarget(best, signal);
 }
 
 export function isElementVisible(el: HTMLElement | null): boolean {
@@ -209,4 +210,49 @@ export function isElementVisible(el: HTMLElement | null): boolean {
   }
 
   return true;
+}
+
+async function waitUntilScrolledToTarget(target: HTMLElement, signal: AbortSignal) {
+  const document = resolveDocument(target);
+  const window = getDocumentWindow(document);
+
+  if (!window) {
+    await abortableSleep(500, signal);
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+
+    let rafId: number;
+
+    const check = () => {
+      if (signal.aborted) {
+        cancelAnimationFrame(rafId);
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+
+      const distance = getScrollDistance(target, {
+        scrollMode: 'if-needed',
+        block: 'center',
+        inline: 'nearest'
+      });
+
+      // When distance is basically zero, scrolling is done.
+      if (Math.abs(distance) < 1) {
+        resolve();
+        return;
+      }
+
+      rafId = requestAnimationFrame(check);
+    };
+
+    rafId = requestAnimationFrame(check);
+  });
+
+  await abortableSleep(100, signal);
 }
