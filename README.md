@@ -191,7 +191,7 @@ This way, users can click anywhere within the structured text content to edit it
 
 By default, when the library encounters stega-encoded content, it searches up the DOM tree to find the nearest `data-datocms-content-link-group` attribute. However, you can stop this upward traversal at any point using the `data-datocms-content-link-boundary` attribute.
 
-This is particularly useful with **Structured Text** fields that contain embedded blocks (records or assets embedded within the `dast` document). While the main structured text paragraphs, headings, and lists should open the structured text field editor, embedded blocks should open their own specific record editor instead:
+This is particularly useful with **Structured Text** fields that contain embedded blocks: while the main structured text paragraphs, headings, and lists should open the structured text field editor, embedded blocks should open their own specific record editor instead:
 
 ```tsx
 <div data-datocms-content-link-group>
