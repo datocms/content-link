@@ -20,7 +20,7 @@ export class FlashItemManager {
     await waitTwoRafs();
     this.fadeIn(scrollToNearestTarget);
     await sleep(1500);
-    this.fadeOut();
+    await this.fadeOut();
   }
 
   private async fadeIn(scrollToNearestTarget: boolean) {
@@ -67,17 +67,21 @@ export class FlashItemManager {
     }
   }
 
-  private fadeOut() {
+  private async fadeOut() {
     if (this.disposed) return;
     this.cancelPendingAnimation();
 
     const abortController = new AbortController();
 
-    this.overlays.map((overlay, index) => {
-      overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController);
-    });
+    const allFadedOut = Promise.all(
+      this.overlays.map((overlay, index) =>
+        overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController)
+      )
+    );
 
     this.overlays = [];
+
+    return await allFadedOut;
   }
 
   dispose() {

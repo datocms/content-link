@@ -18,7 +18,7 @@ import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import { STAMPED_ELEMENTS_SELECTOR } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
 import { FlashAllManager } from './flash/FlashAllManager.js';
-import { FlashItemManager } from './flash/FlashSingleManager.js';
+import { FlashItemManager } from './flash/FlashItemManager.js';
 import type { Controller, CreateControllerOptions, StampSummary } from './types.js';
 import type { WebPreviewsPluginMethods } from './webPreviewsPlugin/types.js';
 
@@ -162,7 +162,7 @@ export class BrowserController implements Controller {
     this.flashAllManager.flash(scrollToNearestTarget);
   }
 
-  flashItem(itemId: string, scrollToNearestTarget = false) {
+  async flashItem(itemId: string, scrollToNearestTarget = false) {
     if (this.disposed) {
       return;
     }
@@ -170,12 +170,12 @@ export class BrowserController implements Controller {
     this.flashItemManager?.dispose();
 
     const flashSingleManager = new FlashItemManager(this.wrapperElement, itemId);
-    flashSingleManager.flash(scrollToNearestTarget);
+    const flashed = flashSingleManager.flash(scrollToNearestTarget);
     this.flashItemManager = flashSingleManager;
 
-    setTimeout(() => {
-      flashSingleManager.dispose();
-    }, 1000);
+    await flashed;
+
+    flashSingleManager.dispose();
   }
 
   private handleStampResult(summary: StampSummary): void {
