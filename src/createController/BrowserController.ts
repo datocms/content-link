@@ -13,9 +13,12 @@ import {
 } from '../utils/dom.js';
 import { extractInfo, extractItemIdsPerEnvironment } from '../utils/editUrl.js';
 import { ClickToEditManager } from './clickToEdit/ClickToEditManager.js';
-import { findEditableTarget } from './clickToEdit/findEditableTarget.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
-import { STAMPED_ELEMENTS_SELECTOR } from './domStamping/constants.js';
+import {
+  AUTOMATIC_STAMP_ATTRIBUTE,
+  MANUAL_STAMP_ATTRIBUTE,
+  STAMPED_ELEMENTS_SELECTOR
+} from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
 import { FlashAllManager } from './flash/FlashAllManager.js';
 import { FlashItemManager } from './flash/FlashItemManager.js';
@@ -186,11 +189,15 @@ export class BrowserController implements Controller {
   private notifyStateChangeToWebPreviewsPlugin() {
     const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
-    // Collect all edit URLs
+    // Collect all edit URLs from stamped elements
     const editUrls = new Set<string>();
     for (const element of stampedElements) {
-      const target = findEditableTarget(element as Element)!;
-      editUrls.add(target.editUrl);
+      const url =
+        element.getAttribute(MANUAL_STAMP_ATTRIBUTE) ||
+        element.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+      if (url) {
+        editUrls.add(url);
+      }
     }
 
     this.webPreviewsPluginConnection?.parent.onStateChange({

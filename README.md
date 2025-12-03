@@ -169,29 +169,54 @@ This is particularly useful for:
 - Helping editors quickly identify what content they can edit
 - Navigating to editable content on long pages
 
-### Edit groups with `data-datocms-edit-group`
+### Edit groups with `data-datocms-content-link-group`
 
-In some cases, you may want to make a larger area clickable than the specific element containing the stega-encoded information. You can achieve this by adding the `data-datocms-edit-group` attribute to a parent element.
+In some cases, you may want to make a larger area clickable than the specific element containing the stega-encoded information. You can achieve this by adding the `data-datocms-content-link-group` attribute to a parent element.
 
 **Structured text fields**
 
 This attribute is particularly useful when rendering **Structured Text** fields. The DatoCMS GraphQL CDA encodes stega information within a specific `span` node inside the structured text content. This means that by default, only that particular span would be clickable to open the editor.
 
-To provide a better editing experience, we recommend wrapping your structured text rendering component with a container that has the `data-datocms-edit-group` attribute. This makes the entire structured text area clickable:
+To provide a better editing experience, we recommend wrapping your structured text rendering component with a container that has the `data-datocms-content-link-group` attribute. This makes the entire structured text area clickable:
 
 ```tsx
-<div data-datocms-edit-group>
+<div data-datocms-content-link-group>
   <StructuredText data={content.structuredTextField} />
 </div>
 ```
 
 This way, users can click anywhere within the structured text content to edit it, rather than having to precisely target a small span element.
 
-### Manual overlays with `data-datocms-edit-url`
+**Edit boundaries with `data-datocms-content-link-boundary`**
+
+By default, when the library encounters stega-encoded content, it searches up the DOM tree to find the nearest `data-datocms-content-link-group` attribute. However, you can stop this upward traversal at any point using the `data-datocms-content-link-boundary` attribute.
+
+This is particularly useful with **Structured Text** fields that contain embedded blocks (records or assets embedded within the `dast` document). While the main structured text paragraphs, headings, and lists should open the structured text field editor, embedded blocks should open their own specific record editor instead:
+
+```tsx
+<div data-datocms-content-link-group>
+  <StructuredText
+    data={content.structuredTextField}
+    renderBlock={(block) => (
+      <div data-datocms-content-link-boundary>
+        <BlockComponent block={block} />
+      </div>
+    )}
+  />
+</div>
+```
+
+In this example:
+- The main structured text content will use the outer `div[data-datocms-content-link-group]` for editing
+- Each embedded block will **not** traverse past its `div[data-datocms-content-link-boundary]`, creating its own independent editable region
+
+This ensures that clicking on the main text opens the structured text field editor, while clicking on an embedded block opens that specific block's editor.
+
+### Manual overlays with `data-datocms-content-link-url`
 
 For text-based fields (single-line text, structured text, markdown), the DatoCMS API automatically embeds stega-encoded information, which this library detects to create overlays. However, non-text fields like booleans, numbers, dates, and JSON cannot contain stega encoding.
 
-For these cases, use the `data-datocms-edit-url` attribute to manually specify the edit URL. The recommended approach is to use the `_editingUrl` field available on all records:
+For these cases, use the `data-datocms-content-link-url` attribute to manually specify the edit URL. The recommended approach is to use the `_editingUrl` field available on all records:
 
 ```graphql
 query {
@@ -207,7 +232,7 @@ query {
 Then add the attribute to your element:
 
 ```tsx
-<span data-datocms-edit-url={product._editingUrl}>
+<span data-datocms-content-link-url={product._editingUrl}>
   ${product.price}
 </span>
 ```

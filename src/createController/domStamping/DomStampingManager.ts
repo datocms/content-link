@@ -6,7 +6,11 @@ import { decodeStega, splitStega } from '../../stega/decode.js';
 import { createScheduler } from '../../utils/createScheduler.js';
 import { resolveDocument } from '../../utils/dom.js';
 import type { StampSummary } from '../types.js';
-import { AUTOMATIC_STAMP_ATTRIBUTE, EDIT_GROUP_ATTRIBUTE } from './constants.js';
+import {
+  AUTOMATIC_STAMP_ATTRIBUTE,
+  GROUP_ATTRIBUTE,
+  GROUP_BOUNDARY_ATTRIBUTE
+} from './constants.js';
 
 export class DomStampingManager {
   private observer: MutationObserver;
@@ -144,7 +148,7 @@ export class DomStampingManager {
 
       const cleanValue = this.addStampingAttributesTargetAndReturnStrippedValue(
         value,
-        parent ? this.maybeFindGroup(parent) : null,
+        parent,
         appliedStamps
       );
 
@@ -161,7 +165,7 @@ export class DomStampingManager {
 
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
         alt,
-        this.maybeFindGroup(img),
+        img,
         appliedStamps
       );
 
@@ -180,10 +184,16 @@ export class DomStampingManager {
 
   private addStampingAttributesTargetAndReturnStrippedValue(
     value: string | null,
-    target: Element | null,
+    elementWithStega: Element | null,
     appliedStamps: Map<Element, string>
   ): string | undefined {
-    if (!value || !target) {
+    if (!value || !elementWithStega) {
+      return;
+    }
+
+    const target = this.maybeFindGroup(elementWithStega);
+
+    if (!target) {
       return;
     }
 
@@ -201,7 +211,7 @@ export class DomStampingManager {
     const existingStamp = appliedStamps.get(target);
 
     if (existingStamp && existingStamp !== decoded.href) {
-      this.warnCollision(target, existingStamp, decoded.href);
+      this.warnCollision(target, existingStamp, elementWithStega, decoded.href);
     }
 
     // Stamp the attribute if it changed
@@ -216,14 +226,37 @@ export class DomStampingManager {
   }
 
   /** Log when two stega-encoded payloads map to the same element in a single pass */
-  private warnCollision(el: Element, originalUrl: string, nextUrl: string) {
-    const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${nextUrl}. Wrap each encoded block in its own element (for example by adding ${EDIT_GROUP_ATTRIBUTE}).`;
+  private warnCollision(
+    target: Element,
+    originalUrl: string,
+    incomingEl: Element,
+    incomingUrl: string
+  ) {
+    const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${incomingUrl}. Wrap each encoded block in its own element (for example by adding ${GROUP_ATTRIBUTE}).`;
 
-    console.warn(message, el);
+    console.warn(message, target, incomingEl);
   }
 
   private maybeFindGroup(start: Element): Element {
-    const wrapper = start.closest<HTMLElement>(`[${EDIT_GROUP_ATTRIBUTE}]`);
-    return wrapper ?? start;
+    // Walk up the DOM tree manually to respect edit boundaries
+    let current: Element | null = start;
+
+    while (current) {
+      // If we found a group, return it
+      if (current.hasAttribute(GROUP_ATTRIBUTE)) {
+        return current;
+      }
+
+      // If we hit an edit boundary, stop and return current element
+      if (current !== start && current.hasAttribute(GROUP_BOUNDARY_ATTRIBUTE)) {
+        return start;
+      }
+
+      // Move up to parent element
+      current = current.parentElement;
+    }
+
+    // No group found, return the starting element
+    return start;
   }
 }

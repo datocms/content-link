@@ -136,6 +136,7 @@ export class ClickToEditManager {
       this.highlightOverlay = new HighlightOverlay(targetElement, () => {
         targetElement.style.cursor = prevCursor;
       });
+      this.highlightOverlay.show();
     }
   }
 

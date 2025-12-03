@@ -43,6 +43,10 @@ export class HighlightOverlay {
     }
   }
 
+  show() {
+    this.updatePosition();
+  }
+
   get document() {
     return resolveDocument(this.targetElement);
   }

@@ -1,6 +1,5 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
 import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
-import { findEditableTarget } from '../clickToEdit/findEditableTarget.js';
 import { STAMPED_ELEMENTS_SELECTOR } from '../domStamping/constants.js';
 
 export const STAGGER_DELAY = 10;
@@ -25,17 +24,9 @@ export class FlashAllManager {
 
     await waitTwoRafs();
 
-    const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
-
-    const targetsSet = new Set<HTMLElement>();
-    for (const element of stampedElements) {
-      const target = findEditableTarget(element as Element);
-      if (target) {
-        targetsSet.add(target.element);
-      }
-    }
-
-    const targets = Array.from(targetsSet);
+    const stampedElements =
+      this.wrapperElement.querySelectorAll<HTMLElement>(STAMPED_ELEMENTS_SELECTOR);
+    const targets = Array.from(stampedElements);
 
     if (targets.length === 0) {
       return;

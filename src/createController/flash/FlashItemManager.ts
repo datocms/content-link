@@ -1,8 +1,11 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
 import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
 import { extractInfo } from '../../utils/editUrl.js';
-import { findEditableTarget } from '../clickToEdit/findEditableTarget.js';
-import { STAMPED_ELEMENTS_SELECTOR } from '../domStamping/constants.js';
+import {
+  AUTOMATIC_STAMP_ATTRIBUTE,
+  MANUAL_STAMP_ATTRIBUTE,
+  STAMPED_ELEMENTS_SELECTOR
+} from '../domStamping/constants.js';
 import { STAGGER_DELAY } from './FlashAllManager.js';
 
 export class FlashItemManager {
@@ -25,16 +28,19 @@ export class FlashItemManager {
 
   private async fadeIn(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
-    const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
+    const stampedElements =
+      this.wrapperElement.querySelectorAll<HTMLElement>(STAMPED_ELEMENTS_SELECTOR);
 
     const targetsSet = new Set<HTMLElement>();
     for (const element of stampedElements) {
-      const target = findEditableTarget(element as Element);
-      if (target) {
+      const editUrl =
+        element.getAttribute(MANUAL_STAMP_ATTRIBUTE) ||
+        element.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+      if (editUrl) {
         // Filter by itemId - parse editUrl to extract itemId
-        const editUrlInfo = extractInfo(target.editUrl);
+        const editUrlInfo = extractInfo(editUrl);
         if (editUrlInfo && editUrlInfo.itemId === this.itemId) {
-          targetsSet.add(target.element);
+          targetsSet.add(element);
         }
       }
     }

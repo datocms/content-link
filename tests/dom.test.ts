@@ -2,7 +2,7 @@ import * as stega from '@vercel/stega';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTOMATIC_STAMP_ATTRIBUTE,
-  EDIT_GROUP_ATTRIBUTE,
+  GROUP_ATTRIBUTE,
   MANUAL_STAMP_ATTRIBUTE
 } from '../src/createController/domStamping/constants.js';
 import { createController } from '../src/index.js';
@@ -231,10 +231,10 @@ describe('createController', () => {
     });
 
     document.body.innerHTML = `
-      <div id="text-wrapper" ${EDIT_GROUP_ATTRIBUTE}>
+      <div id="text-wrapper" ${GROUP_ATTRIBUTE}>
         <span id="wrapped">${encodedText}</span>
       </div>
-      <div id="image-wrapper" ${EDIT_GROUP_ATTRIBUTE}>
+      <div id="image-wrapper" ${GROUP_ATTRIBUTE}>
         <img id="wrapped-image" alt="${encodedAlt}" src="#">
       </div>
     `;
