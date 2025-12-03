@@ -186,7 +186,7 @@ export async function maybeScrollToNearestTarget(
     return;
   }
 
-  best.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  best.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   await waitUntilScrolledToTarget(best, signal);
 }
