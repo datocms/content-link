@@ -10,6 +10,8 @@ export type WebsiteState = {
  * Methods that the Web Previews plugin exposes to the website (Child to Parent).
  */
 export type WebPreviewsPluginMethods = {
+  onInit(): Promise<void>;
+  onPing(): Promise<void>;
   onStateChange(payload: WebsiteState): Promise<void>;
   openItem(payload: EditUrlInfo): Promise<void>;
 };

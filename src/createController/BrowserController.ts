@@ -186,7 +186,7 @@ export class BrowserController implements Controller {
     this.notifyStateChangeToWebPreviewsPlugin();
   }
 
-  private notifyStateChangeToWebPreviewsPlugin() {
+  private async notifyStateChangeToWebPreviewsPlugin() {
     const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
     // Collect all edit URLs from stamped elements
@@ -200,7 +200,7 @@ export class BrowserController implements Controller {
       }
     }
 
-    this.webPreviewsPluginConnection?.parent.onStateChange({
+    await this.webPreviewsPluginConnection?.parent.onStateChange({
       clickToEditEnabled: this.clickToEditManager.isActive(),
       path: this.currentPath,
       itemIdsPerEnvironment: extractItemIdsPerEnvironment(Array.from(editUrls))
@@ -261,14 +261,20 @@ export class BrowserController implements Controller {
       return;
     }
 
+    let pingInterval: NodeJS.Timeout;
+
     this.webPreviewsPluginConnection = {
       parent,
       destroy: () => {
-        connection.destroy;
+        clearInterval(pingInterval);
+        connection.destroy();
       }
     };
 
-    this.notifyStateChangeToWebPreviewsPlugin();
+    await this.notifyStateChangeToWebPreviewsPlugin();
+    await parent.onInit();
+
+    pingInterval = setInterval(() => parent.onPing(), 1000);
   }
 
   private onKeyDown(event: Event) {

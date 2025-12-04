@@ -14,13 +14,7 @@
       "import": "./dist/stega/index.js"
     }
   },
-  "files": [
-    "src",
-    "dist",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
+  "files": ["src", "dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "engines": {
     "node": ">=18"
   },
