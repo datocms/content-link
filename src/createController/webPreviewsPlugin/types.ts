@@ -6,11 +6,15 @@ export type WebsiteState = {
   itemIdsPerEnvironment: Record<string, string[]>;
 };
 
+export type OnInitData = {
+  editUrlRegExp: { source: string; flags: string };
+};
+
 /**
  * Methods that the Web Previews plugin exposes to the website (Child to Parent).
  */
 export type WebPreviewsPluginMethods = {
-  onInit(): Promise<void>;
+  onInit(): Promise<OnInitData>;
   onPing(): Promise<void>;
   onStateChange(payload: WebsiteState): Promise<void>;
   openItem(payload: EditUrlInfo): Promise<void>;

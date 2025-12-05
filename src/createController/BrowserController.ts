@@ -38,6 +38,7 @@ export class BrowserController implements Controller {
 
   private webPreviewsPluginConnection: {
     parent: AsyncMethodReturns<WebPreviewsPluginMethods>;
+    editUrlRegExp: RegExp;
     destroy: () => void;
   } | null = null;
 
@@ -166,13 +167,17 @@ export class BrowserController implements Controller {
   }
 
   async flashItem(itemId: string, scrollToNearestTarget = false) {
-    if (this.disposed) {
+    if (this.disposed || !this.webPreviewsPluginConnection) {
       return;
     }
 
     this.flashItemManager?.dispose();
 
-    const flashSingleManager = new FlashItemManager(this.wrapperElement, itemId);
+    const flashSingleManager = new FlashItemManager(
+      this.wrapperElement,
+      itemId,
+      this.webPreviewsPluginConnection.editUrlRegExp
+    );
     const flashed = flashSingleManager.flash(scrollToNearestTarget);
     this.flashItemManager = flashSingleManager;
 
@@ -187,6 +192,10 @@ export class BrowserController implements Controller {
   }
 
   private async notifyStateChangeToWebPreviewsPlugin() {
+    if (!this.webPreviewsPluginConnection) {
+      return;
+    }
+
     const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
     // Collect all edit URLs from stamped elements
@@ -200,16 +209,19 @@ export class BrowserController implements Controller {
       }
     }
 
-    await this.webPreviewsPluginConnection?.parent.onStateChange({
+    await this.webPreviewsPluginConnection.parent.onStateChange({
       clickToEditEnabled: this.clickToEditManager.isActive(),
       path: this.currentPath,
-      itemIdsPerEnvironment: extractItemIdsPerEnvironment(Array.from(editUrls))
+      itemIdsPerEnvironment: extractItemIdsPerEnvironment(
+        Array.from(editUrls),
+        this.webPreviewsPluginConnection.editUrlRegExp
+      )
     });
   }
 
   private handleEditClick(editUrl: string): void {
     if (this.webPreviewsPluginConnection) {
-      const info = extractInfo(editUrl);
+      const info = extractInfo(editUrl, this.webPreviewsPluginConnection.editUrlRegExp);
 
       if (info) {
         this.webPreviewsPluginConnection.parent.openItem(info);
@@ -263,18 +275,20 @@ export class BrowserController implements Controller {
 
     let pingInterval: NodeJS.Timeout;
 
+    const { editUrlRegExp } = await parent.onInit();
+
+    pingInterval = setInterval(() => parent.onPing(), 1000);
+
     this.webPreviewsPluginConnection = {
       parent,
       destroy: () => {
         clearInterval(pingInterval);
         connection.destroy();
-      }
+      },
+      editUrlRegExp: new RegExp(editUrlRegExp.source, editUrlRegExp.flags)
     };
 
     await this.notifyStateChangeToWebPreviewsPlugin();
-    await parent.onInit();
-
-    pingInterval = setInterval(() => parent.onPing(), 1000);
   }
 
   private onKeyDown(event: Event) {

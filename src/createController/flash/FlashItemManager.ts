@@ -15,7 +15,8 @@ export class FlashItemManager {
 
   constructor(
     private readonly wrapperElement: ParentNode,
-    private readonly itemId: string
+    private readonly itemId: string,
+    private readonly editUrlRegExp: RegExp
   ) {}
 
   async flash(scrollToNearestTarget: boolean) {
@@ -38,7 +39,7 @@ export class FlashItemManager {
         element.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
       if (editUrl) {
         // Filter by itemId - parse editUrl to extract itemId
-        const editUrlInfo = extractInfo(editUrl);
+        const editUrlInfo = extractInfo(editUrl, this.editUrlRegExp);
         if (editUrlInfo && editUrlInfo.itemId === this.itemId) {
           targetsSet.add(element);
         }

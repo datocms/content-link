@@ -1,6 +1,3 @@
-const URL_SYNTAX =
-  /^(?<base_url>.+?)(?:\/environments\/(?<environment>[^\/]+))?\/editor\/item_types\/(?<item_type_id>[^\/]+)\/items\/(?<item_id>[^\/]+)\/edit#fieldPath=(?<field_path>.+)$/;
-
 export type EditUrlInfo = {
   environment: string;
   itemTypeId: string;
@@ -8,8 +5,8 @@ export type EditUrlInfo = {
   fieldPath: string;
 };
 
-export function extractInfo(editUrl: string): EditUrlInfo | null {
-  const match = editUrl.match(URL_SYNTAX);
+export function extractInfo(editUrl: string, editUrlRegExp: RegExp): EditUrlInfo | null {
+  const match = editUrl.match(editUrlRegExp);
 
   if (!match || !match.groups) {
     return null;
@@ -23,11 +20,11 @@ export function extractInfo(editUrl: string): EditUrlInfo | null {
   };
 }
 
-export function extractItemIdsPerEnvironment(editUrls: Iterable<string>) {
+export function extractItemIdsPerEnvironment(editUrls: Iterable<string>, editUrlRegExp: RegExp) {
   const itemIdsByEnvironment: Record<string, Set<string>> = {};
 
   for (const url of editUrls) {
-    const info = extractInfo(url);
+    const info = extractInfo(url, editUrlRegExp);
     if (info) {
       const env = info.environment;
       if (!itemIdsByEnvironment[env]) {
