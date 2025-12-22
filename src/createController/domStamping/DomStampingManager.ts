@@ -2,7 +2,9 @@
  * Manages DOM stamping: observation, mutation batching, stega decoding, and attribute application.
  * Absorbs logic from stamp/index.ts and BrowserController's stamping functionality.
  */
-import { decodeStega, splitStega } from '../../stega/decode.js';
+import { vercelStegaDecode } from '@vercel/stega';
+import { splitStega } from '../../stega/decode.js';
+import { DecodedInfo, isDecodedInfo } from '../../stega/types.js';
 import { createScheduler } from '../../utils/createScheduler.js';
 import { resolveDocument } from '../../utils/dom.js';
 import type { StampSummary } from '../types.js';
@@ -202,8 +204,9 @@ export class DomStampingManager {
       return undefined;
     }
 
-    const decoded = decodeStega(value, split);
-    if (!decoded) {
+    const decoded = vercelStegaDecode(split.encoded) as DecodedInfo;
+
+    if (!isDecodedInfo(decoded)) {
       return undefined;
     }
 
