@@ -21,8 +21,8 @@ import { executeQuery } from "@datocms/cda-client";
 
 const result = await executeQuery(query, {
   token: process.env.DATO_API_TOKEN,
-  contentLink: 'vercel-v1', // vercel-v1 is just the identifier: You do not need to be hosting on Vercel!
-  baseEditingUrl: 'https://acme.admin.datocms.com'
+  contentLink: 'v1',
+  baseEditingUrl: 'https://acme.admin.datocms.com', // <- Your DatoCMS project URL
 });
 ```
 
