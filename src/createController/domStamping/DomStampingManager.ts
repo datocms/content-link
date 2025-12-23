@@ -148,6 +148,12 @@ export class DomStampingManager {
       const value = node.nodeValue ?? '';
       const parent = node.parentElement;
 
+      // Skip text nodes inside <script> and <style> tags
+      if (parent && this.isInsideExcludedTag(parent)) {
+        node = walker.nextNode();
+        continue;
+      }
+
       const cleanValue = this.addStampingAttributesTargetAndReturnStrippedValue(
         value,
         parent,
@@ -163,6 +169,11 @@ export class DomStampingManager {
 
     // Second pass: inspect image alts, since they are not part of the text walker.
     for (const img of element.querySelectorAll<HTMLImageElement>('img[alt]')) {
+      // Skip images inside <script> and <style> tags
+      if (this.isInsideExcludedTag(img)) {
+        continue;
+      }
+
       const alt = img.getAttribute('alt');
 
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
@@ -199,14 +210,22 @@ export class DomStampingManager {
       return;
     }
 
-    const split = splitStega(value);
-    if (!split.encoded) {
-      return undefined;
-    }
+    let split;
+    let decoded;
 
-    const decoded = vercelStegaDecode(split.encoded) as DecodedInfo;
+    try {
+      split = splitStega(value);
+      if (!split.encoded) {
+        return undefined;
+      }
 
-    if (!isDecodedInfo(decoded)) {
+      decoded = vercelStegaDecode(split.encoded) as DecodedInfo;
+
+      if (!isDecodedInfo(decoded)) {
+        return undefined;
+      }
+    } catch (error) {
+      // If stega decoding fails, silently skip this value
       return undefined;
     }
 
@@ -238,6 +257,22 @@ export class DomStampingManager {
     const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${incomingUrl}. Wrap each encoded block in its own element (for example by adding ${GROUP_ATTRIBUTE}).`;
 
     console.warn(message, target, incomingEl);
+  }
+
+  private isInsideExcludedTag(element: Element | null): boolean {
+    if (!element) {
+      return false;
+    }
+
+    let current: Element | null = element;
+    while (current) {
+      if (current.tagName === 'SCRIPT' || current.tagName === 'STYLE') {
+        return true;
+      }
+      current = current.parentElement;
+    }
+
+    return false;
   }
 
   private maybeFindGroup(start: Element): Element {
