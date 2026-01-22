@@ -21,7 +21,8 @@ export class DomStampingManager {
 
   constructor(
     private readonly root: ParentNode,
-    private readonly onStamp: (summary: StampSummary) => void
+    private readonly onStamp: (summary: StampSummary) => void,
+    private readonly stripStega: boolean = false
   ) {
     this.observer = new MutationObserver((mutations) => this.handleMutations(mutations));
 
@@ -160,7 +161,7 @@ export class DomStampingManager {
         appliedStamps
       );
 
-      if (cleanValue !== undefined) {
+      if (this.stripStega && cleanValue !== undefined) {
         node.nodeValue = cleanValue;
       }
 
@@ -182,7 +183,7 @@ export class DomStampingManager {
         appliedStamps
       );
 
-      if (cleanAlt !== undefined) {
+      if (this.stripStega && cleanAlt !== undefined) {
         img.setAttribute('alt', cleanAlt);
       }
     }

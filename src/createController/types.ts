@@ -7,6 +7,21 @@ export type CreateControllerOptions = {
   root?: ParentNode;
   /** Callback invoked when the Web Previews plugin requests navigation to a different URL */
   onNavigateTo?: (path: string) => void;
+  /**
+   * Whether to strip stega-encoded invisible characters from text content after stamping.
+   * Default: false (preserves stega encoding in the DOM)
+   *
+   * When false (default):
+   * - Stega encoding remains in the DOM (invisible to users)
+   * - Controller can be disposed and recreated on the same page
+   * - Content source of truth is preserved
+   *
+   * When true:
+   * - Stega encoding is permanently removed from text nodes
+   * - Text content becomes clean but controller cannot be recreated
+   * - Useful if you need clean textContent for programmatic access
+   */
+  stripStega?: boolean;
 };
 
 export type StampSummary = {

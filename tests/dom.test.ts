@@ -69,14 +69,16 @@ describe('createController', () => {
     expect(heroText.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
       'hero123#fieldPath=hero.title.en'
     );
-    expect(heroText.textContent).toBe('Hero headline');
+    // Default behavior preserves stega encoding (invisible characters)
+    expect(heroText.textContent).toContain('Hero headline');
 
     const imageWrapper = heroImage.closest(`[${AUTOMATIC_STAMP_ATTRIBUTE}]`) as HTMLElement;
     expect(imageWrapper).not.toBeNull();
     expect(imageWrapper.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
       'hero123#fieldPath=hero.image'
     );
-    expect(heroImage.getAttribute('alt')).toBe('Hero image alt');
+    // Default behavior preserves stega encoding (invisible characters)
+    expect(heroImage.getAttribute('alt')).toContain('Hero image alt');
 
     controller.dispose();
 
@@ -152,7 +154,8 @@ describe('createController', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(paragraph.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-123#fieldPath=excerpt');
-    expect(paragraph.textContent).toBe('Fresh content');
+    // Default behavior preserves stega encoding (invisible characters)
+    expect(paragraph.textContent).toContain('Fresh content');
 
     controller.dispose();
   });
@@ -256,7 +259,8 @@ describe('createController', () => {
     expect(imageWrapper.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
       'item-1#fieldPath=wrapper.image'
     );
-    expect(wrappedImage.getAttribute('alt')).toBe('Wrapped image');
+    // Default behavior preserves stega encoding (invisible characters)
+    expect(wrappedImage.getAttribute('alt')).toContain('Wrapped image');
 
     controller.dispose();
   });

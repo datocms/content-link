@@ -60,8 +60,10 @@ export class BrowserController implements Controller {
 
     this.initializeWebPreviewsPluginConnection();
 
-    this.stampingManager = new DomStampingManager(this.wrapperElement, (summary) =>
-      this.handleStampResult(summary)
+    this.stampingManager = new DomStampingManager(
+      this.wrapperElement,
+      (summary) => this.handleStampResult(summary),
+      options.stripStega ?? false
     );
 
     this.flashAllManager = new FlashAllManager(this.wrapperElement);

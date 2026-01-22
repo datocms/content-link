@@ -53,7 +53,10 @@ const controller = createController();
 const controller = createController({
   // Optional: limit scanning/observation to this root instead of the whole document.
   // Can be a ShadowRoot or a specific container element.
-  root: document.getElementById('preview-container')
+  root: document.getElementById('preview-container'),
+
+  // Optional: strip stega-encoded invisible characters from text content (default: false)
+  stripStega: false
 });
 
 // Control click-to-edit overlays
@@ -71,6 +74,9 @@ Returns a controller to manage DOM stamping and click-to-edit overlays.
 
 **Options:**
 - `root?: ParentNode`: Limit scanning to a specific container (default: `document`)
+- `stripStega?: boolean`: Whether to strip stega-encoded invisible characters from text content after stamping (default: `false`)
+  - When `false` (default): Stega encoding remains in the DOM, allowing controllers to be disposed and recreated on the same page. The invisible characters don't affect display but preserve the source of truth.
+  - When `true`: Stega encoding is permanently removed from text nodes, providing clean `textContent` for programmatic access. However, recreating a controller on the same page won't detect elements since the encoding is lost.
 
 **Controller methods:**
 - `enableClickToEdit(flashAll?: { scrollToNearestTarget: boolean })`: Turn click-to-edit overlays on (allows clicking elements to open the editor). Optionally pass `flashAll` to briefly highlight all editable elements with an animated effect, and scroll to the nearest one if none are visible.
@@ -138,6 +144,39 @@ export default function PreviewPage() {
 ---
 
 ## Advanced usage
+
+### Controller lifecycle and stega preservation
+
+By default, the controller preserves stega-encoded invisible characters in the DOM. This allows you to safely dispose and recreate controllers on the same page without losing the ability to detect editable elements:
+
+```ts
+// Create initial controller
+const controller1 = createController();
+controller1.enableClickToEdit();
+
+// Later, dispose it
+controller1.dispose();
+
+// Create a new controller - it will still find all editable elements
+const controller2 = createController();
+controller2.enableClickToEdit();
+```
+
+This is particularly useful for:
+- Testing scenarios with setup/teardown
+- Single Page Applications that need to recreate controllers during navigation
+- Hot-reloading during development
+- Any scenario requiring controller restart without page reload
+
+If you need clean text content for programmatic access (without invisible stega characters), use `stripStega: true`. However, note that this permanently removes the stega encoding, preventing controller recreation:
+
+```ts
+const controller = createController({ stripStega: true });
+
+// After disposal, creating a new controller won't find elements
+controller.dispose();
+const controller2 = createController(); // Won't detect editable elements
+```
 
 ### Visual feedback with flash-all highlighting
 
@@ -267,7 +306,7 @@ const clean = stripStega(someString);
 
 ### Runtime behaviour
 
-1. **DOM Stamping** (automatic): Walks text nodes and `<img alt>` values inside `root`, decodes stega, stamps attributes (`data-datocms-stega`), removes stega data from content. MutationObserver watches for changes and rescans automatically.
+1. **DOM Stamping** (automatic): Walks text nodes and `<img alt>` values inside `root`, decodes stega, stamps attributes (`data-datocms-stega`). By default, stega encoding is preserved in the DOM (invisible to users). If `stripStega: true` is set, the invisible characters are removed from content. MutationObserver watches for changes and rescans automatically.
 2. **Click-to-Edit Overlays** (opt-in): When enabled via `enableClickToEdit()`, listens for hover/click/focus/keyboard events and highlights editable regions. Clicking opens the edit URL in the DatoCMS editor or a new tab. Can also be temporarily toggled by holding the Alt/Option key.
 3. **Web Previews Plugin Connection** (automatic): When running inside the Web Previews plugin iframe, establishes bidirectional communication for state synchronization and remote control.
 4. **Dispose**: Disconnects all observers, tears down listeners, clears stamps, and cleans up.
@@ -289,6 +328,7 @@ All managers can work independently - stamping continues even when click-to-edit
 - **Elements not clickable**: DOM stamping runs automatically, but click-to-edit overlays require explicit activation via `enableClickToEdit()`.
 - **Overlays not updating**: The MutationObserver automatically detects DOM changes and rescans. If you're replacing large parts of the DOM at once, ensure the mutations are observable.
 - **Web Previews plugin integration not working**: The plugin connection only works when your preview is running inside the Web Previews plugin iframe. Outside of the plugin, edit URLs will open in a new tab as a fallback.
+- **Controller recreation issues**: If you dispose and recreate a controller on the same page, the second controller will only find elements if `stripStega: false` (the default). If you previously used `stripStega: true`, the stega encoding was permanently removed and cannot be recovered. In this case, you'll need to reload the page or re-fetch the content.
 
 ## License
 
