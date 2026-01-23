@@ -3,7 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import {
   AUTOMATIC_STAMP_ATTRIBUTE,
   GROUP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE
+  MANUAL_STAMP_ATTRIBUTE,
+  SOURCE_STAMP_ATTRIBUTE
 } from '../src/createController/domStamping/constants.js';
 import { createController } from '../src/index.js';
 import * as decodeModule from '../src/stega/decode.js';
@@ -261,6 +262,147 @@ describe('createController', () => {
     );
     // Default behavior preserves stega encoding (invisible characters)
     expect(wrappedImage.getAttribute('alt')).toContain('Wrapped image');
+
+    controller.dispose();
+  });
+
+  it('stamps attributes from source attribute', () => {
+    const encodedSource = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'card123#fieldPath=card.metadata'
+    });
+
+    document.body.innerHTML = `
+      <main>
+        <div id="card" ${SOURCE_STAMP_ATTRIBUTE}="${encodedSource}">
+          <h2>Card Title</h2>
+          <p>Card content without stega</p>
+        </div>
+      </main>
+    `;
+
+    const controller = createController();
+
+    const card = document.getElementById('card') as HTMLElement;
+
+    expect(card.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      'card123#fieldPath=card.metadata'
+    );
+    // Source attribute should still be present when stripStega is false
+    expect(card.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(true);
+
+    controller.dispose();
+
+    expect(card.hasAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(false);
+  });
+
+  it('strips source attribute when stripStega is true', () => {
+    const encodedSource = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'widget456#fieldPath=widget.data'
+    });
+
+    document.body.innerHTML = `
+      <main>
+        <div id="widget" ${SOURCE_STAMP_ATTRIBUTE}="${encodedSource}">
+          <span>Widget content</span>
+        </div>
+      </main>
+    `;
+
+    const controller = createController({ stripStega: true });
+
+    const widget = document.getElementById('widget') as HTMLElement;
+
+    expect(widget.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      'widget456#fieldPath=widget.data'
+    );
+    // Source attribute should be removed when stripStega is true
+    expect(widget.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(false);
+
+    controller.dispose();
+  });
+
+  it('re-marks elements with source attribute via MutationObserver', async () => {
+    document.body.innerHTML = `<section id="container"></section>`;
+    const container = document.getElementById('container') as HTMLElement;
+
+    const controller = createController();
+
+    const encodedSource = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'item-789#fieldPath=item.metadata'
+    });
+
+    const div = document.createElement('div');
+    div.id = 'dynamic';
+    div.setAttribute(SOURCE_STAMP_ATTRIBUTE, encodedSource);
+    div.textContent = 'Dynamic content';
+    container.appendChild(div);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(div.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-789#fieldPath=item.metadata');
+    expect(div.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(true);
+
+    controller.dispose();
+  });
+
+  it('updates stamp when source attribute changes', async () => {
+    const firstEncoded = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'item-1#fieldPath=field1'
+    });
+
+    const secondEncoded = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'item-2#fieldPath=field2'
+    });
+
+    document.body.innerHTML = `
+      <div id="mutable" ${SOURCE_STAMP_ATTRIBUTE}="${firstEncoded}">Content</div>
+    `;
+
+    const mutable = document.getElementById('mutable') as HTMLElement;
+
+    const controller = createController();
+
+    expect(mutable.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=field1');
+
+    // Change the source attribute
+    mutable.setAttribute(SOURCE_STAMP_ATTRIBUTE, secondEncoded);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mutable.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe('item-2#fieldPath=field2');
+
+    controller.dispose();
+  });
+
+  it('combines source attribute with wrapper targeting', () => {
+    const encodedSource = vercelStegaCombine('', {
+      origin: 'datocms.com',
+      href: 'item-1#fieldPath=wrapper.metadata'
+    });
+
+    document.body.innerHTML = `
+      <div id="source-wrapper" ${GROUP_ATTRIBUTE}>
+        <div id="inner" ${SOURCE_STAMP_ATTRIBUTE}="${encodedSource}">
+          <span>Inner content</span>
+        </div>
+      </div>
+    `;
+
+    const controller = createController();
+
+    const wrapper = document.getElementById('source-wrapper') as HTMLElement;
+    const inner = document.getElementById('inner') as HTMLElement;
+
+    // Should stamp the wrapper, not the inner element
+    expect(wrapper.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(
+      'item-1#fieldPath=wrapper.metadata'
+    );
+    expect(inner.hasAttribute(AUTOMATIC_STAMP_ATTRIBUTE)).toBe(false);
 
     controller.dispose();
   });

@@ -277,6 +277,26 @@ Then add the attribute to your element:
 
 This ensures the URL format is always correct and adapts automatically to any future changes.
 
+### Stamping elements via `data-datocms-content-link-source`
+
+In some cases, you may want to provide stega-encoded metadata for an element without rendering any visible stega-encoded content. The `data-datocms-content-link-source` attribute allows you to attach stega metadata directly to any element.
+
+This is particularly useful when:
+- You want to make a container element editable without stega-encoded text content
+- You're rendering components where stega encoding in visible text would be problematic
+- You need to provide metadata for structural elements that don't contain text (like `<video>`, `<audio>`, `<iframe>`, etc.)
+
+```tsx
+// Use any stega-encoded text field as the source
+<div data-datocms-content-link-source={video.alt}>
+  <video
+    src={video.url}
+    poster={video.posterImage.url}
+    controls
+  />
+</div>
+```
+
 ---
 
 ## Low-level utilities
@@ -325,7 +345,7 @@ stripStega(["First\u200E", "Second\u200E", "Third\u200E"])
 
 ### Runtime behaviour
 
-1. **DOM Stamping** (automatic): Walks text nodes and `<img alt>` values inside `root`, decodes stega, stamps attributes (`data-datocms-stega`). By default, stega encoding is preserved in the DOM (invisible to users). If `stripStega: true` is set, the invisible characters are removed from content. MutationObserver watches for changes and rescans automatically.
+1. **DOM Stamping** (automatic): Walks text nodes, `<img alt>` values, and elements with `data-datocms-content-link-source` attribute inside `root`, decodes stega, stamps attributes (`data-datocms-stega`). By default, stega encoding is preserved in the DOM (invisible to users). If `stripStega: true` is set, the invisible characters are removed from content. MutationObserver watches for changes and rescans automatically.
 2. **Click-to-Edit Overlays** (opt-in): When enabled via `enableClickToEdit()`, listens for hover/click/focus/keyboard events and highlights editable regions. Clicking opens the edit URL in the DatoCMS editor or a new tab. Can also be temporarily toggled by holding the Alt/Option key.
 3. **Web Previews Plugin Connection** (automatic): When running inside the Web Previews plugin iframe, establishes bidirectional communication for state synchronization and remote control.
 4. **Dispose**: Disconnects all observers, tears down listeners, clears stamps, and cleans up.

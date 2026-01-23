@@ -11,7 +11,8 @@ import type { StampSummary } from '../types.js';
 import {
   AUTOMATIC_STAMP_ATTRIBUTE,
   GROUP_ATTRIBUTE,
-  GROUP_BOUNDARY_ATTRIBUTE
+  GROUP_BOUNDARY_ATTRIBUTE,
+  SOURCE_STAMP_ATTRIBUTE
 } from './constants.js';
 
 export class DomStampingManager {
@@ -31,7 +32,7 @@ export class DomStampingManager {
       childList: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ['alt']
+      attributeFilter: ['alt', SOURCE_STAMP_ATTRIBUTE]
     });
 
     this.instantStampPendingElements(true);
@@ -58,6 +59,10 @@ export class DomStampingManager {
         this.pendingElementsToStamp.add(parent);
         hasChanges = true;
       } else if (mutation.type === 'attributes' && mutation.attributeName === 'alt') {
+        const element = mutation.target as Element;
+        this.pendingElementsToStamp.add((element.parentElement ?? this.root) as ParentNode);
+        hasChanges = true;
+      } else if (mutation.type === 'attributes' && mutation.attributeName === SOURCE_STAMP_ATTRIBUTE) {
         const element = mutation.target as Element;
         this.pendingElementsToStamp.add((element.parentElement ?? this.root) as ParentNode);
         hasChanges = true;
@@ -170,11 +175,6 @@ export class DomStampingManager {
 
     // Second pass: inspect image alts, since they are not part of the text walker.
     for (const img of element.querySelectorAll<HTMLImageElement>('img[alt]')) {
-      // Skip images inside <script> and <style> tags
-      if (this.isInsideExcludedTag(img)) {
-        continue;
-      }
-
       const alt = img.getAttribute('alt');
 
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
@@ -185,6 +185,22 @@ export class DomStampingManager {
 
       if (this.stripStega && cleanAlt !== undefined) {
         img.setAttribute('alt', cleanAlt);
+      }
+    }
+
+    // Third pass: inspect elements with data-datocms-content-link-source attribute
+    for (const el of element.querySelectorAll<HTMLElement>(`[${SOURCE_STAMP_ATTRIBUTE}]`)) {
+      const sourceValue = el.getAttribute(SOURCE_STAMP_ATTRIBUTE);
+
+      this.addStampingAttributesTargetAndReturnStrippedValue(
+        sourceValue,
+        el,
+        appliedStamps
+      );
+
+      // If stripStega is enabled, clear the source attribute after stamping
+      if (this.stripStega) {
+        el.removeAttribute(SOURCE_STAMP_ATTRIBUTE);
       }
     }
 
@@ -205,12 +221,7 @@ export class DomStampingManager {
       return;
     }
 
-    const target = this.maybeFindGroup(elementWithStega);
-
-    if (!target) {
-      return;
-    }
-
+    // First, check if there's stega-encoded data (cheap operation)
     let split;
     let decoded;
 
@@ -228,6 +239,13 @@ export class DomStampingManager {
     } catch (error) {
       // If stega decoding fails, silently skip this value
       return undefined;
+    }
+
+    // Only if we have valid stega data, find the target element (more expensive DOM walk)
+    const target = this.maybeFindGroup(elementWithStega);
+
+    if (!target) {
+      return;
     }
 
     // Check for collision within this pass
