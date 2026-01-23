@@ -356,7 +356,7 @@ export class BrowserController implements Controller {
       this.flashAllManager.fadeOut();
     } else {
       this.enableClickToEdit();
-      this.flashAllManager.fadeIn(true);
+      this.flashAllManager.flash(true);
     }
 
     this.temporaryState = undefined;
