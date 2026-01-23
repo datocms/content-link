@@ -22,6 +22,11 @@ import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
 const FADE_DELAY = 200;
 
+export interface HighlightOverlayOptions {
+  onDispose?: () => void;
+  showLabel?: boolean;
+}
+
 export class HighlightOverlay {
   private overlayElement: HTMLDivElement;
 
@@ -29,12 +34,17 @@ export class HighlightOverlay {
   private scrollResizeUnsubscribe: (() => void) | null = null;
   private pendingAnimationAbortController: AbortController | null = null;
 
+  private readonly onDispose?: () => void;
+  private readonly showLabel: boolean;
+
   constructor(
     readonly targetElement: HTMLElement,
-    readonly onDispose?: () => void,
-    readonly showLabel: boolean = false,
+    options: HighlightOverlayOptions = {},
   ) {
-    this.overlayElement = this.createOverlayElement(showLabel);
+    this.onDispose = options.onDispose;
+    this.showLabel = options.showLabel ?? false;
+    
+    this.overlayElement = this.createOverlayElement(this.showLabel);
     document.body.appendChild(this.overlayElement);
 
     const coordinator = getScrollResizeCoordinator(this.document);

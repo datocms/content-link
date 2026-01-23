@@ -32,7 +32,8 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf dist",
-    "build": "npm run clean && tsup",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && npm run clean && tsup",
     "build:watch": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
