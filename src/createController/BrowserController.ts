@@ -54,8 +54,10 @@ export class BrowserController implements Controller {
       doc: this.document
     });
 
-    this.clickToEditManager = new ClickToEditManager(this.document, (editUrl) =>
-      this.handleEditClick(editUrl)
+    this.clickToEditManager = new ClickToEditManager(
+      this.document,
+      (editUrl) => this.handleEditClick(editUrl),
+      () => this.webPreviewsPluginConnection === null
     );
 
     this.initializeWebPreviewsPluginConnection();

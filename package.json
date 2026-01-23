@@ -39,7 +39,8 @@
     "lint": "biome check --write .",
     "format": "biome format --write .",
     "format:check": "biome check .",
-    "prepublishOnly": "npm run build && npm run test"
+    "prepublishOnly": "npm run build && npm run test",
+    "example": "npm run build && serve ."
   },
   "keywords": [
     "datocms",
@@ -73,6 +74,7 @@
     "np": "^10.2.0",
     "penpal": "^4.1.1",
     "rimraf": "^5.0.5",
+    "serve": "^14.2.4",
     "tsup": "^8.5.1",
     "typescript": "^5.5.4",
     "vitest": "^1.6.0"

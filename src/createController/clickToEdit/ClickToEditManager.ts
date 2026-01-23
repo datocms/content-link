@@ -17,7 +17,8 @@ export class ClickToEditManager {
 
   constructor(
     private readonly document: Document,
-    private readonly onEditClick: (editUrl: string) => void
+    private readonly onEditClick: (editUrl: string) => void,
+    private readonly isPenpalConnectionActive: () => boolean = () => false
   ) {}
 
   isActive(): boolean {
@@ -133,9 +134,13 @@ export class ClickToEditManager {
     if (targetElement) {
       const prevCursor = targetElement.style.cursor;
       targetElement.style.cursor = 'pointer';
-      this.highlightOverlay = new HighlightOverlay(targetElement, () => {
-        targetElement.style.cursor = prevCursor;
-      });
+      this.highlightOverlay = new HighlightOverlay(
+        targetElement,
+        () => {
+          targetElement.style.cursor = prevCursor;
+        },
+        this.isPenpalConnectionActive()
+      );
       this.highlightOverlay.show();
     }
   }

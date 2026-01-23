@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Link Example</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      background: #f9f9f9;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .instruction {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="instruction">
+    <strong>Instructions:</strong> Hover over the cards below to see the "Open in DatoCMS" label appear!
+  </div>
+
+  <h1>Content Link Example</h1>
+
+  <div class="card" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/456/edit">
+    <h2>Feature 1</h2>
+    <p>This card has a content link. Hover over it to see the overlay with the "Open in DatoCMS" label.</p>
+  </div>
+
+  <div class="card" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/789/edit">
+    <h2>Feature 2</h2>
+    <p>This is another editable card. The label appears because there's no penpal connection.</p>
+  </div>
+
+  <div class="card" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/101/edit">
+    <h2>Feature 3</h2>
+    <p>All cards are editable and will show the orange overlay when you hover over them.</p>
+  </div>
+
+  <script type="module">
+    import { createController } from '../dist/index.js';
+
+    // Initialize the controller
+    const controller = createController();
+
+    // Enable click-to-edit mode
+    controller.enableClickToEdit();
+
+    console.log('Content Link controller initialized');
+    console.log('Hover over the cards to see the "Open in DatoCMS" label');
+  </script>
+</body>
+
+</html>

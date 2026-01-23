@@ -8,9 +8,15 @@ import {
   DEFAULT_BORDER_RADIUS,
   DEFAULT_BORDER_WIDTH,
   DEFAULT_OVERLAY_PADDING,
-  OVERLAY_Z_INDEX
+  OVERLAY_Z_INDEX,
 } from '../createController/clickToEdit/constants.js';
-import { abortableSleep, getDocumentWindow, measure, resolveDocument, waitTwoRafs } from './dom.js';
+import {
+  abortableSleep,
+  getDocumentWindow,
+  measure,
+  resolveDocument,
+  waitTwoRafs,
+} from './dom.js';
 import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
 import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
@@ -25,9 +31,10 @@ export class HighlightOverlay {
 
   constructor(
     readonly targetElement: HTMLElement,
-    readonly onDispose?: () => void
+    readonly onDispose?: () => void,
+    readonly showLabel: boolean = false,
   ) {
-    this.overlayElement = this.createOverlayElement();
+    this.overlayElement = this.createOverlayElement(showLabel);
     document.body.appendChild(this.overlayElement);
 
     const coordinator = getScrollResizeCoordinator(this.document);
@@ -66,9 +73,13 @@ export class HighlightOverlay {
     this.pendingAnimationAbortController?.abort();
   }
 
-  async fadeIn(afterDelay = 0, abortController?: AbortController): Promise<void> {
+  async fadeIn(
+    afterDelay = 0,
+    abortController?: AbortController,
+  ): Promise<void> {
     this.cancelPendingAnimation();
-    this.pendingAnimationAbortController = abortController || new AbortController();
+    this.pendingAnimationAbortController =
+      abortController || new AbortController();
     const { signal } = this.pendingAnimationAbortController;
 
     try {
@@ -81,9 +92,13 @@ export class HighlightOverlay {
     }
   }
 
-  async disposeWithFadeOut(afterDelay = 0, abortController?: AbortController): Promise<void> {
+  async disposeWithFadeOut(
+    afterDelay = 0,
+    abortController?: AbortController,
+  ): Promise<void> {
     this.cancelPendingAnimation();
-    this.pendingAnimationAbortController = abortController || new AbortController();
+    this.pendingAnimationAbortController =
+      abortController || new AbortController();
     const { signal } = this.pendingAnimationAbortController;
 
     try {
@@ -97,29 +112,52 @@ export class HighlightOverlay {
     }
   }
 
-  private createOverlayElement() {
-    const el = this.document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.top = '0';
-    el.style.left = '0';
-    el.style.width = '0';
-    el.style.height = '0';
-    el.style.border = `${DEFAULT_BORDER_WIDTH} solid ${DEFAULT_BORDER_COLOR}`;
-    el.style.borderRadius = DEFAULT_BORDER_RADIUS;
-    el.style.background = DEFAULT_BACKGROUND_COLOR;
-    el.style.boxSizing = 'border-box';
-    el.style.pointerEvents = 'none';
-    el.style.zIndex = OVERLAY_Z_INDEX;
-    el.style.display = 'block';
-    el.style.opacity = '1';
-    el.style.transition = `opacity ${FADE_DELAY}ms ease-in-out`;
-    el.setAttribute('aria-hidden', 'true');
-    return el;
+  private createOverlayElement(withLabel: boolean) {
+    const overlay = this.document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '0';
+    overlay.style.height = '0';
+    overlay.style.border = `${DEFAULT_BORDER_WIDTH} solid ${DEFAULT_BORDER_COLOR}`;
+    overlay.style.borderRadius = withLabel
+      ? `${DEFAULT_BORDER_RADIUS} 0 ${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS}`
+      : DEFAULT_BORDER_RADIUS;
+    overlay.style.background = DEFAULT_BACKGROUND_COLOR;
+    overlay.style.boxSizing = 'border-box';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.zIndex = OVERLAY_Z_INDEX;
+    overlay.style.display = 'block';
+    overlay.style.opacity = '1';
+    overlay.style.transition = `opacity ${FADE_DELAY}ms ease-in-out`;
+    overlay.setAttribute('aria-hidden', 'true');
+
+    if (withLabel) {
+      const label = this.document.createElement('div');
+      label.textContent = 'Open in DatoCMS ↗';
+      label.style.position = 'absolute';
+      label.style.bottom = '100%';
+      label.style.right = `-${DEFAULT_BORDER_WIDTH}`;
+      label.style.backgroundColor = DEFAULT_BORDER_COLOR;
+      label.style.color = 'white';
+      label.style.padding = '4px 12px';
+      label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
+      label.style.fontSize = '13px';
+      label.style.fontWeight = '500';
+      label.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      label.style.whiteSpace = 'nowrap';
+      label.setAttribute('aria-hidden', 'true');
+      overlay.appendChild(label);
+    }
+
+    return overlay;
   }
 
   private updatePosition(): void {
     const rect = measure(this.targetElement);
-    this.overlayElement.style.zIndex = this.computeOverlayZIndex(this.targetElement);
+    this.overlayElement.style.zIndex = this.computeOverlayZIndex(
+      this.targetElement,
+    );
 
     if (!rect) {
       return;
