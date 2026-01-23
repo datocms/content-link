@@ -297,10 +297,29 @@ const clean = stripStega(someString);
 - Returns `{ origin: string, href: string }` if stega is found, `null` otherwise
 - Use this to extract editing URLs from stega-encoded content
 
-**`stripStega(input: string)`**
-- Removes stega-encoded metadata from a string
-- Returns the cleaned string without zero-width characters
-- Use this when you need to display or process the plain text content
+**`stripStega(input: any)`**
+- Works with any data type: strings, objects, arrays, and primitives
+- Converts input to JSON, removes all stega-encoded segments using `VERCEL_STEGA_REGEX`, then parses back to original type
+- Returns the cleaned data without invisible stega characters
+
+```ts
+// Works with strings
+stripStega("Hello\u200EWorld") // "HelloWorld"
+
+// Works with objects
+stripStega({ name: "John\u200E", age: 30 })
+
+// Works with nested structures - removes ALL stega encodings
+stripStega({
+  users: [
+    { name: "Alice\u200E", email: "alice\u200E.com" },
+    { name: "Bob\u200E", email: "bob\u200E.co" }
+  ]
+})
+
+// Works with arrays
+stripStega(["First\u200E", "Second\u200E", "Third\u200E"])
+```
 
 ## Runtime & debugging
 
