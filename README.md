@@ -22,7 +22,7 @@ import { executeQuery } from "@datocms/cda-client";
 const result = await executeQuery(query, {
   token: process.env.DATO_API_TOKEN,
   contentLink: 'v1',
-  baseEditingUrl: 'https://acme.admin.datocms.com', // <- Your DatoCMS project URL
+  baseEditingUrl: 'https://acme.admin.datocms.com', // <- URL of your DatoCMS project (https://<YOUR-PROJECT-NAME>.admin.datocms.com)
 });
 ```
 
@@ -363,7 +363,7 @@ All managers can work independently - stamping continues even when click-to-edit
 
 ## Troubleshooting
 
-- **No overlays appear**: Ensure your fetch requests include the `contentLink` and `baseEditingUrl` options. The stega-encoded metadata is only included in responses when these options are present. Also, make sure you've called `enableClickToEdit()` on the controller.
+- **No overlays appear**: Ensure your fetch requests include the `contentLink` and `baseEditingUrl` options. `baseEditingUrl` should be set to your DatoCMS project admin URL (e.g., `https://<YOUR-PROJECT-NAME>.admin.datocms.com`). The stega-encoded metadata is only included in responses when these options are present. Also, make sure you've called `enableClickToEdit()` on the controller.
 - **Elements not clickable**: DOM stamping runs automatically, but click-to-edit overlays require explicit activation via `enableClickToEdit()`.
 - **Overlays not updating**: The MutationObserver automatically detects DOM changes and rescans. If you're replacing large parts of the DOM at once, ensure the mutations are observable.
 - **Web Previews plugin integration not working**: The plugin connection only works when your preview is running inside the Web Previews plugin iframe. Outside of the plugin, edit URLs will open in a new tab as a fallback.
