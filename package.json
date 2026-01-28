@@ -1,6 +1,6 @@
 {
   "name": "@datocms/content-link",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "DatoCMS visual editing overlays without Vercel dependencies.",
   "type": "module",
   "types": "./dist/index.d.ts",
