@@ -317,8 +317,7 @@ export class BrowserController implements Controller {
       return;
     }
 
-    // Disable key events when inside an iframe
-    if (!this.isTopLevelWindow) {
+    if (!this.isTopLevelWindowOrInWebPreviewsIframe) {
       return;
     }
 
@@ -330,8 +329,7 @@ export class BrowserController implements Controller {
       return;
     }
 
-    // Disable key events when inside an iframe
-    if (!this.isTopLevelWindow) {
+    if (!this.isTopLevelWindowOrInWebPreviewsIframe) {
       return;
     }
 
@@ -389,11 +387,13 @@ export class BrowserController implements Controller {
     this.temporaryState = undefined;
   }
 
-  private get isTopLevelWindow() {
+  private get isTopLevelWindowOrInWebPreviewsIframe() {
     const opener =
       this.document.defaultView ??
       (typeof window !== 'undefined' ? window : null);
 
-    return opener && opener.parent === opener;
+    return (
+      this.webPreviewsPluginConnection || (opener && opener.parent === opener)
+    );
   }
 }
