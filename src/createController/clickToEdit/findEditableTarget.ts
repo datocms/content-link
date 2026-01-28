@@ -3,9 +3,9 @@
  * hovers over the page. Simple wrapper, but kept isolated for testability.
  */
 import {
-  AUTOMATIC_STAMP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE,
-  STAMPED_ELEMENTS_SELECTOR
+  AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
+  MANUAL_TARGET_STAMP_ATTRIBUTE,
+  STAMPED_ELEMENTS_SELECTOR,
 } from '../domStamping/constants.js';
 
 export type EditableTarget = {
@@ -13,7 +13,9 @@ export type EditableTarget = {
   editUrl: string;
 };
 
-export function findEditableTarget(from: EventTarget | Element | null): EditableTarget | null {
+export function findEditableTarget(
+  from: EventTarget | Element | null,
+): EditableTarget | null {
   if (!from || !(from instanceof Element)) {
     return null;
   }
@@ -23,7 +25,9 @@ export function findEditableTarget(from: EventTarget | Element | null): Editable
     return null;
   }
 
-  const url = el.getAttribute(MANUAL_STAMP_ATTRIBUTE) || el.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+  const url =
+    el.getAttribute(MANUAL_TARGET_STAMP_ATTRIBUTE) ||
+    el.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
 
   if (!url) {
     return null;

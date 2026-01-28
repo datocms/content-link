@@ -9,30 +9,35 @@ import { createScheduler } from '../../utils/createScheduler.js';
 import { resolveDocument } from '../../utils/dom.js';
 import type { StampSummary } from '../types.js';
 import {
-  AUTOMATIC_STAMP_ATTRIBUTE,
+  AUTOMATIC_STEGA_STAMP_ATTRIBUTE,
+  AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   GROUP_ATTRIBUTE,
   GROUP_BOUNDARY_ATTRIBUTE,
-  SOURCE_STAMP_ATTRIBUTE
+  SOURCE_STAMP_ATTRIBUTE,
 } from './constants.js';
 
 export class DomStampingManager {
   private observer: MutationObserver;
   private readonly pendingElementsToStamp = new Set<ParentNode>();
-  private readonly scheduleStamping = createScheduler(() => this.instantStampPendingElements());
+  private readonly scheduleStamping = createScheduler(() =>
+    this.instantStampPendingElements(),
+  );
 
   constructor(
     private readonly root: ParentNode,
     private readonly onStamp: (summary: StampSummary) => void,
-    private readonly stripStega: boolean = false
+    private readonly stripStega: boolean = false,
   ) {
-    this.observer = new MutationObserver((mutations) => this.handleMutations(mutations));
+    this.observer = new MutationObserver((mutations) =>
+      this.handleMutations(mutations),
+    );
 
     this.observer.observe(this.root, {
       subtree: true,
       childList: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ['alt', SOURCE_STAMP_ATTRIBUTE]
+      attributeFilter: ['alt', SOURCE_STAMP_ATTRIBUTE],
     });
 
     this.instantStampPendingElements(true);
@@ -42,10 +47,12 @@ export class DomStampingManager {
     this.observer.disconnect();
     this.pendingElementsToStamp.clear();
 
-    const nodes = this.root.querySelectorAll<HTMLElement>(`[${AUTOMATIC_STAMP_ATTRIBUTE}]`);
+    const nodes = this.root.querySelectorAll<HTMLElement>(
+      `[${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`,
+    );
 
     for (const el of nodes) {
-      el.removeAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+      el.removeAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
     }
   }
 
@@ -55,16 +62,28 @@ export class DomStampingManager {
     for (const mutation of mutations) {
       if (mutation.type === 'characterData') {
         const node = mutation.target as Node;
-        const parent = (node.parentElement ?? node.parentNode ?? this.root) as ParentNode;
+        const parent = (node.parentElement ??
+          node.parentNode ??
+          this.root) as ParentNode;
         this.pendingElementsToStamp.add(parent);
         hasChanges = true;
-      } else if (mutation.type === 'attributes' && mutation.attributeName === 'alt') {
+      } else if (
+        mutation.type === 'attributes' &&
+        mutation.attributeName === 'alt'
+      ) {
         const element = mutation.target as Element;
-        this.pendingElementsToStamp.add((element.parentElement ?? this.root) as ParentNode);
+        this.pendingElementsToStamp.add(
+          (element.parentElement ?? this.root) as ParentNode,
+        );
         hasChanges = true;
-      } else if (mutation.type === 'attributes' && mutation.attributeName === SOURCE_STAMP_ATTRIBUTE) {
+      } else if (
+        mutation.type === 'attributes' &&
+        mutation.attributeName === SOURCE_STAMP_ATTRIBUTE
+      ) {
         const element = mutation.target as Element;
-        this.pendingElementsToStamp.add((element.parentElement ?? this.root) as ParentNode);
+        this.pendingElementsToStamp.add(
+          (element.parentElement ?? this.root) as ParentNode,
+        );
         hasChanges = true;
       } else if (mutation.type === 'childList') {
         this.pendingElementsToStamp.add(mutation.target as ParentNode);
@@ -110,7 +129,7 @@ export class DomStampingManager {
               }
               return acc;
             }, new Map<Element, string>()),
-            scope: this.root
+            scope: this.root,
           };
 
     if (firstStamping && combinedSummary.appliedStamps.size === 0) {
@@ -135,7 +154,7 @@ export class DomStampingManager {
     if (!doc) {
       return {
         appliedStamps: new Map(),
-        scope: element
+        scope: element,
       };
     }
 
@@ -163,7 +182,7 @@ export class DomStampingManager {
       const cleanValue = this.addStampingAttributesTargetAndReturnStrippedValue(
         value,
         parent,
-        appliedStamps
+        appliedStamps,
       );
 
       if (this.stripStega && cleanValue !== undefined) {
@@ -180,7 +199,7 @@ export class DomStampingManager {
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
         alt,
         img,
-        appliedStamps
+        appliedStamps,
       );
 
       if (this.stripStega && cleanAlt !== undefined) {
@@ -189,13 +208,15 @@ export class DomStampingManager {
     }
 
     // Third pass: inspect elements with data-datocms-content-link-source attribute
-    for (const el of element.querySelectorAll<HTMLElement>(`[${SOURCE_STAMP_ATTRIBUTE}]`)) {
+    for (const el of element.querySelectorAll<HTMLElement>(
+      `[${SOURCE_STAMP_ATTRIBUTE}]`,
+    )) {
       const sourceValue = el.getAttribute(SOURCE_STAMP_ATTRIBUTE);
 
       this.addStampingAttributesTargetAndReturnStrippedValue(
         sourceValue,
         el,
-        appliedStamps
+        appliedStamps,
       );
 
       // If stripStega is enabled, clear the source attribute after stamping
@@ -206,7 +227,7 @@ export class DomStampingManager {
 
     const summary: StampSummary = {
       appliedStamps: appliedStamps,
-      scope: element
+      scope: element,
     };
 
     return summary;
@@ -215,7 +236,7 @@ export class DomStampingManager {
   private addStampingAttributesTargetAndReturnStrippedValue(
     value: string | null,
     elementWithStega: Element | null,
-    appliedStamps: Map<Element, string>
+    appliedStamps: Map<Element, string>,
   ): string | undefined {
     if (!value || !elementWithStega) {
       return;
@@ -256,11 +277,18 @@ export class DomStampingManager {
     }
 
     // Stamp the attribute if it changed
-    const existingEditUrl = target.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+    const existingEditUrl = target.getAttribute(
+      AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
+    );
 
     if (existingEditUrl !== decoded.href) {
-      target.setAttribute(AUTOMATIC_STAMP_ATTRIBUTE, decoded.href);
+      target.setAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE, decoded.href);
       appliedStamps.set(target, decoded.href);
+    }
+
+    // When not stripping stega, mark the element that directly contains the stega data
+    if (!this.stripStega) {
+      elementWithStega.setAttribute(AUTOMATIC_STEGA_STAMP_ATTRIBUTE, '');
     }
 
     return split.cleaned;
@@ -271,7 +299,7 @@ export class DomStampingManager {
     target: Element,
     originalUrl: string,
     incomingEl: Element,
-    incomingUrl: string
+    incomingUrl: string,
   ) {
     const message = `[@datocms/content-link] Multiple stega-encoded payloads resolved to the same DOM element. Previous URL: ${originalUrl}. Incoming URL: ${incomingUrl}. Wrap each encoded block in its own element (for example by adding ${GROUP_ATTRIBUTE}).`;
 

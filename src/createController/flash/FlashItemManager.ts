@@ -1,10 +1,14 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
-import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
+import {
+  maybeScrollToNearestTarget,
+  sleep,
+  waitTwoRafs,
+} from '../../utils/dom.js';
 import { extractInfo } from '../../utils/editUrl.js';
 import {
-  AUTOMATIC_STAMP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE,
-  STAMPED_ELEMENTS_SELECTOR
+  AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
+  MANUAL_TARGET_STAMP_ATTRIBUTE,
+  STAMPED_ELEMENTS_SELECTOR,
 } from '../domStamping/constants.js';
 import { STAGGER_DELAY } from './FlashAllManager.js';
 
@@ -16,7 +20,7 @@ export class FlashItemManager {
   constructor(
     private readonly wrapperElement: ParentNode,
     private readonly itemId: string,
-    private readonly editUrlRegExp: RegExp
+    private readonly editUrlRegExp: RegExp,
   ) {}
 
   async flash(scrollToNearestTarget: boolean) {
@@ -29,14 +33,15 @@ export class FlashItemManager {
 
   private async fadeIn(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
-    const stampedElements =
-      this.wrapperElement.querySelectorAll<HTMLElement>(STAMPED_ELEMENTS_SELECTOR);
+    const stampedElements = this.wrapperElement.querySelectorAll<HTMLElement>(
+      STAMPED_ELEMENTS_SELECTOR,
+    );
 
     const targetsSet = new Set<HTMLElement>();
     for (const element of stampedElements) {
       const editUrl =
-        element.getAttribute(MANUAL_STAMP_ATTRIBUTE) ||
-        element.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+        element.getAttribute(MANUAL_TARGET_STAMP_ATTRIBUTE) ||
+        element.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
       if (editUrl) {
         // Filter by itemId - parse editUrl to extract itemId
         const editUrlInfo = extractInfo(editUrl, this.editUrlRegExp);
@@ -82,8 +87,8 @@ export class FlashItemManager {
 
     const allFadedOut = Promise.all(
       this.overlays.map((overlay, index) =>
-        overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController)
-      )
+        overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController),
+      ),
     );
 
     this.overlays = [];

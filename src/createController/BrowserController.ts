@@ -15,8 +15,8 @@ import { extractInfo, extractItemIdsPerEnvironment } from '../utils/editUrl.js';
 import { ClickToEditManager } from './clickToEdit/ClickToEditManager.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import {
-  AUTOMATIC_STAMP_ATTRIBUTE,
-  MANUAL_STAMP_ATTRIBUTE,
+  AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
+  MANUAL_TARGET_STAMP_ATTRIBUTE,
   STAMPED_ELEMENTS_SELECTOR,
 } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
@@ -216,8 +216,8 @@ export class BrowserController implements Controller {
     const editUrls = new Set<string>();
     for (const element of stampedElements) {
       const url =
-        element.getAttribute(MANUAL_STAMP_ATTRIBUTE) ||
-        element.getAttribute(AUTOMATIC_STAMP_ATTRIBUTE);
+        element.getAttribute(MANUAL_TARGET_STAMP_ATTRIBUTE) ||
+        element.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
       if (url) {
         editUrls.add(url);
       }
