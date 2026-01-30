@@ -332,8 +332,8 @@ export class DomStampingManager {
         return current;
       }
 
-      // If we hit an edit boundary, stop and return current element
-      if (current !== start && current.hasAttribute(GROUP_BOUNDARY_ATTRIBUTE)) {
+      // If we hit an edit boundary, stop and return the starting element
+      if (current.hasAttribute(GROUP_BOUNDARY_ATTRIBUTE)) {
         return start;
       }
 

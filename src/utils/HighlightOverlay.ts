@@ -43,7 +43,7 @@ export class HighlightOverlay {
   ) {
     this.onDispose = options.onDispose;
     this.showLabel = options.showLabel ?? false;
-    
+
     this.overlayElement = this.createOverlayElement(this.showLabel);
     document.body.appendChild(this.overlayElement);
 
@@ -153,9 +153,14 @@ export class HighlightOverlay {
       label.style.padding = '4px 12px';
       label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
       label.style.fontSize = '13px';
-      label.style.fontWeight = '500';
+      label.style.fontWeight = '600';
       label.style.fontFamily = 'system-ui, -apple-system, sans-serif';
       label.style.whiteSpace = 'nowrap';
+      label.style.setProperty('-webkit-font-smoothing', 'antialiased');
+      label.style.letterSpacing = 'normal';
+      label.style.lineHeight = 'normal';
+      label.style.textTransform = 'none';
+      label.style.fontStyle = 'normal';
       label.setAttribute('aria-hidden', 'true');
       overlay.appendChild(label);
     }
@@ -170,13 +175,37 @@ export class HighlightOverlay {
     );
 
     if (!rect) {
+      this.overlayElement.style.display = 'none';
       return;
     }
 
+    this.overlayElement.style.display = 'block';
     this.overlayElement.style.top = `${rect.top - DEFAULT_OVERLAY_PADDING}px`;
     this.overlayElement.style.left = `${rect.left - DEFAULT_OVERLAY_PADDING}px`;
     this.overlayElement.style.width = `${rect.width + DEFAULT_OVERLAY_PADDING * 2}px`;
     this.overlayElement.style.height = `${rect.height + DEFAULT_OVERLAY_PADDING * 2}px`;
+
+    if (this.showLabel) {
+      const label = this.overlayElement.firstElementChild as HTMLElement | null;
+      if (label) {
+        const isNarrow = rect.width + DEFAULT_OVERLAY_PADDING * 2 < 150;
+        if (isNarrow) {
+          label.style.bottom = `calc(100% + 10px)`;
+          label.style.right = 'auto';
+          label.style.left = '50%';
+          label.style.transform = 'translateX(-50%)';
+          label.style.borderRadius = `${DEFAULT_BORDER_RADIUS}`;
+          this.overlayElement.style.borderRadius = DEFAULT_BORDER_RADIUS;
+        } else {
+          label.style.bottom = '100%';
+          label.style.right = `-${DEFAULT_BORDER_WIDTH}`;
+          label.style.left = 'auto';
+          label.style.transform = 'none';
+          label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
+          this.overlayElement.style.borderRadius = `${DEFAULT_BORDER_RADIUS} 0 ${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS}`;
+        }
+      }
+    }
   }
 
   private computeOverlayZIndex(el: Element): string {

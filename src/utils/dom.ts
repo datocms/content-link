@@ -58,7 +58,7 @@ export function getDocumentWindow(document: Document) {
   return document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 }
 
-/** Compute the bounding box for the target element, ignoring zero-size nodes. */
+/** Compute the bounding box for the target element, ignoring zero-size or hidden nodes. */
 export function measure(
   el: Element
 ): { top: number; left: number; width: number; height: number } | null {
@@ -67,6 +67,9 @@ export function measure(
   }
   const rect = el.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
+    return null;
+  }
+  if (!isElementVisible(el as HTMLElement)) {
     return null;
   }
   return {

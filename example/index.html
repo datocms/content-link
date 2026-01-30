@@ -32,6 +32,109 @@
       border-radius: 4px;
       margin-bottom: 20px;
     }
+
+    nav:hover .dropdown-menu {
+      display: block !important;
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 10px 16px;
+      text-decoration: none;
+      color: #333;
+    }
+
+    .dropdown-menu a:hover {
+      background: #f0f0f0;
+    }
+
+    nav {
+      position: relative;
+      display: inline-block;
+      margin: 20px 0;
+    }
+
+    nav button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      min-width: 200px;
+      z-index: 10;
+    }
+
+    .navbar {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+      padding: 0 20px;
+    }
+
+    .navbar li {
+      position: relative;
+    }
+
+    .navbar li > a {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 16px 0;
+      text-decoration: none;
+      color: #333;
+      font-size: 15px;
+    }
+
+    .navbar li:hover > a {
+      opacity: 0.7;
+    }
+
+    .navbar .submenu {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      top: 110%;
+      left: 0;
+      min-width: 250px;
+      background: white;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: top 0.3s, opacity 0.3s;
+    }
+
+    .navbar li:hover .submenu {
+      visibility: visible;
+      opacity: 1;
+      top: 100%;
+    }
+
+    .navbar .submenu a {
+      display: block;
+      padding: 8px 12px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .navbar .submenu a:hover {
+      opacity: 0.7;
+    }
   </style>
 </head>
 
@@ -40,7 +143,8 @@
     <strong>Instructions:</strong> Hover over the cards below to see the "Open in DatoCMS" label appear!
   </div>
 
-  <h1>Content Link Example</h1>
+  <h1 data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/456/edit"
+    style="display: inline;">Content</h1>
 
   <div class="card" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/456/edit">
     <h2>Feature 1</h2>
@@ -56,6 +160,41 @@
     <h2>Feature 3</h2>
     <p>All cards are editable and will show the orange overlay when you hover over them.</p>
   </div>
+
+  <nav>
+    <button>Dropdown menu ▾</button>
+    <div class="dropdown-menu">
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/201/edit"
+>Dropdown item 1</a>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/202/edit"
+>Dropdown item 2</a>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/203/edit"
+>Dropdown item 3</a>
+    </div>
+  </nav>
+
+  <ul class="navbar">
+    <li>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/301/edit">Home</a>
+    </li>
+    <li>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/302/edit">About</a>
+    </li>
+    <li>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/303/edit">
+        Landing Variations <span>▾</span>
+      </a>
+      <div class="submenu">
+        <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/304/edit">Home Variation One</a>
+        <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/305/edit">Home Variation Two</a>
+        <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/306/edit">Home Variation Three</a>
+        <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/307/edit">Home Variation Four</a>
+      </div>
+    </li>
+    <li>
+      <a href="#" data-datocms-content-link-url="https://example.datocms.com/editor/item_types/123/items/308/edit">Contact</a>
+    </li>
+  </ul>
 
   <script type="module">
     import { createController } from '../dist/index.js';
