@@ -207,12 +207,19 @@ export function isElementVisible(el: HTMLElement | null): boolean {
     return false;
   }
 
-  const parent = el.parentElement;
-  if (parent) {
-    return isElementVisible(parent);
+  return isAncestorVisible(el.parentElement);
+}
+
+function isAncestorVisible(el: HTMLElement | null): boolean {
+  if (!el) return true;
+
+  const style = window.getComputedStyle(el);
+
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false;
   }
 
-  return true;
+  return isAncestorVisible(el.parentElement);
 }
 
 async function waitUntilScrolledToTarget(target: HTMLElement, signal: AbortSignal) {
