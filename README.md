@@ -470,26 +470,6 @@ stripStega({
 stripStega(["First\u200E", "Second\u200E", "Third\u200E"])
 ```
 
-## Runtime & debugging
-
-### Runtime behaviour
-
-1. **DOM Stamping** (automatic): Walks text nodes, `<img alt>` values, and elements with `data-datocms-content-link-source` attribute inside `root`, decodes stega, stamps attributes (`data-datocms-stega`). By default, stega encoding is preserved in the DOM (invisible to users). If `stripStega: true` is set, the invisible characters are removed from content. MutationObserver watches for changes and rescans automatically.
-2. **Click-to-Edit Overlays** (opt-in): When enabled via `enableClickToEdit()`, listens for hover/click/focus/keyboard events and highlights editable regions. Clicking opens the edit URL in the DatoCMS editor or a new tab. Can also be temporarily toggled by holding the Alt/Option key.
-3. **Web Previews Plugin Connection** (automatic): When running inside the Web Previews plugin iframe, establishes bidirectional communication for state synchronization and remote control.
-4. **Dispose**: Disconnects all observers, tears down listeners, clears stamps, and cleans up.
-
-### Architecture
-
-The controller orchestrates several independent managers:
-- **DomStampingManager**: Handles DOM observation, mutation batching, stega decoding, and attribute stamping
-- **ClickToEditManager**: Handles visual highlighting and user interactions (only active when enabled)
-- **FlashAllManager**: Handles the animated flash-all highlighting feature
-- **EventsManager**: Manages custom events for state changes and user interactions
-- **WebPreviewsPluginConnection**: Handles bidirectional communication with the Web Previews plugin via iframe messaging (Penpal)
-
-All managers can work independently - stamping continues even when click-to-edit is disabled, and the plugin connection is only established when running inside an iframe.
-
 ## Troubleshooting
 
 - **No overlays appear**: Ensure your fetch requests include the `contentLink` and `baseEditingUrl` options. `baseEditingUrl` should be set to your DatoCMS project admin URL (e.g., `https://<YOUR-PROJECT-NAME>.admin.datocms.com`). The stega-encoded metadata is only included in responses when these options are present. Also, make sure you've called `enableClickToEdit()` on the controller.
