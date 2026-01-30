@@ -1,7 +1,7 @@
 {
   "name": "@datocms/content-link",
   "version": "0.3.16",
-  "description": "DatoCMS visual editing overlays without Vercel dependencies.",
+  "description": "Lightweight library for DatoCMS visual editing overlays and content links.",
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -62,6 +62,10 @@
       "email": "m.finamor@datocms.com"
     }
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/datocms/content-link.git"
+  },
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
