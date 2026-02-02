@@ -8,8 +8,6 @@ Click-to-edit overlays for DatoCMS projects. Platform and framework agnostic, tw
 npm install @datocms/content-link
 ```
 
-![Usage demo](./docs/usage.gif)
-
 ## Quick start
 
 ### 1. Fetch content with Content Link enabled
