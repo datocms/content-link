@@ -1,14 +1,11 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
-import {
-  maybeScrollToNearestTarget,
-  sleep,
-  waitTwoRafs,
-} from '../../utils/dom.js';
+import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
 import { extractInfo } from '../../utils/editUrl.js';
+import type { OverlayColors } from '../clickToEdit/constants.js';
 import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   MANUAL_TARGET_STAMP_ATTRIBUTE,
-  STAMPED_ELEMENTS_SELECTOR,
+  STAMPED_ELEMENTS_SELECTOR
 } from '../domStamping/constants.js';
 import { STAGGER_DELAY } from './FlashAllManager.js';
 
@@ -21,6 +18,7 @@ export class FlashItemManager {
     private readonly wrapperElement: ParentNode,
     private readonly itemId: string,
     private readonly editUrlRegExp: RegExp,
+    private readonly overlayColors?: OverlayColors
   ) {}
 
   async flash(scrollToNearestTarget: boolean) {
@@ -33,9 +31,8 @@ export class FlashItemManager {
 
   private async fadeIn(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
-    const stampedElements = this.wrapperElement.querySelectorAll<HTMLElement>(
-      STAMPED_ELEMENTS_SELECTOR,
-    );
+    const stampedElements =
+      this.wrapperElement.querySelectorAll<HTMLElement>(STAMPED_ELEMENTS_SELECTOR);
 
     const targetsSet = new Set<HTMLElement>();
     for (const element of stampedElements) {
@@ -70,7 +67,7 @@ export class FlashItemManager {
       }
 
       targets.map((target, index) => {
-        const overlay = new HighlightOverlay(target);
+        const overlay = new HighlightOverlay(target, { overlayColors: this.overlayColors });
         overlay.fadeIn(index * STAGGER_DELAY, abortController);
         this.overlays.push(overlay);
       });
@@ -87,8 +84,8 @@ export class FlashItemManager {
 
     const allFadedOut = Promise.all(
       this.overlays.map((overlay, index) =>
-        overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController),
-      ),
+        overlay.disposeWithFadeOut(index * STAGGER_DELAY, abortController)
+      )
     );
 
     this.overlays = [];

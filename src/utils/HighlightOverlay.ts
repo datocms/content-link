@@ -3,20 +3,15 @@
  * active editable element. Keeps all DOM manipulation in one place.
  */
 import {
-  DEFAULT_BACKGROUND_COLOR,
-  DEFAULT_BORDER_COLOR,
   DEFAULT_BORDER_RADIUS,
   DEFAULT_BORDER_WIDTH,
+  DEFAULT_HUE,
   DEFAULT_OVERLAY_PADDING,
   OVERLAY_Z_INDEX,
+  buildOverlayColors,
+  type OverlayColors
 } from '../createController/clickToEdit/constants.js';
-import {
-  abortableSleep,
-  getDocumentWindow,
-  measure,
-  resolveDocument,
-  waitTwoRafs,
-} from './dom.js';
+import { abortableSleep, getDocumentWindow, measure, resolveDocument, waitTwoRafs } from './dom.js';
 import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
 import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
@@ -25,6 +20,7 @@ const FADE_DELAY = 200;
 export interface HighlightOverlayOptions {
   onDispose?: () => void;
   showLabel?: boolean;
+  overlayColors?: OverlayColors;
 }
 
 export class HighlightOverlay {
@@ -36,13 +32,15 @@ export class HighlightOverlay {
 
   private readonly onDispose?: () => void;
   private readonly showLabel: boolean;
+  private readonly overlayColors: OverlayColors;
 
   constructor(
     readonly targetElement: HTMLElement,
-    options: HighlightOverlayOptions = {},
+    options: HighlightOverlayOptions = {}
   ) {
     this.onDispose = options.onDispose;
     this.showLabel = options.showLabel ?? false;
+    this.overlayColors = options.overlayColors ?? buildOverlayColors(DEFAULT_HUE);
 
     this.overlayElement = this.createOverlayElement(this.showLabel);
     document.body.appendChild(this.overlayElement);
@@ -83,13 +81,9 @@ export class HighlightOverlay {
     this.pendingAnimationAbortController?.abort();
   }
 
-  async fadeIn(
-    afterDelay = 0,
-    abortController?: AbortController,
-  ): Promise<void> {
+  async fadeIn(afterDelay = 0, abortController?: AbortController): Promise<void> {
     this.cancelPendingAnimation();
-    this.pendingAnimationAbortController =
-      abortController || new AbortController();
+    this.pendingAnimationAbortController = abortController || new AbortController();
     const { signal } = this.pendingAnimationAbortController;
 
     try {
@@ -102,13 +96,9 @@ export class HighlightOverlay {
     }
   }
 
-  async disposeWithFadeOut(
-    afterDelay = 0,
-    abortController?: AbortController,
-  ): Promise<void> {
+  async disposeWithFadeOut(afterDelay = 0, abortController?: AbortController): Promise<void> {
     this.cancelPendingAnimation();
-    this.pendingAnimationAbortController =
-      abortController || new AbortController();
+    this.pendingAnimationAbortController = abortController || new AbortController();
     const { signal } = this.pendingAnimationAbortController;
 
     try {
@@ -129,11 +119,11 @@ export class HighlightOverlay {
     overlay.style.left = '0';
     overlay.style.width = '0';
     overlay.style.height = '0';
-    overlay.style.border = `${DEFAULT_BORDER_WIDTH} solid ${DEFAULT_BORDER_COLOR}`;
+    overlay.style.border = `${DEFAULT_BORDER_WIDTH} solid ${this.overlayColors.borderColor}`;
     overlay.style.borderRadius = withLabel
       ? `${DEFAULT_BORDER_RADIUS} 0 ${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS}`
       : DEFAULT_BORDER_RADIUS;
-    overlay.style.background = DEFAULT_BACKGROUND_COLOR;
+    overlay.style.background = this.overlayColors.backgroundColor;
     overlay.style.boxSizing = 'border-box';
     overlay.style.pointerEvents = 'none';
     overlay.style.zIndex = OVERLAY_Z_INDEX;
@@ -148,7 +138,7 @@ export class HighlightOverlay {
       label.style.position = 'absolute';
       label.style.bottom = '100%';
       label.style.right = `-${DEFAULT_BORDER_WIDTH}`;
-      label.style.backgroundColor = DEFAULT_BORDER_COLOR;
+      label.style.backgroundColor = this.overlayColors.borderColor;
       label.style.color = 'white';
       label.style.padding = '4px 12px';
       label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
@@ -170,9 +160,7 @@ export class HighlightOverlay {
 
   private updatePosition(): void {
     const rect = measure(this.targetElement);
-    this.overlayElement.style.zIndex = this.computeOverlayZIndex(
-      this.targetElement,
-    );
+    this.overlayElement.style.zIndex = this.computeOverlayZIndex(this.targetElement);
 
     if (!rect) {
       this.overlayElement.style.display = 'none';

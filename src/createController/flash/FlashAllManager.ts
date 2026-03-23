@@ -1,5 +1,6 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
 import { maybeScrollToNearestTarget, sleep, waitTwoRafs } from '../../utils/dom.js';
+import type { OverlayColors } from '../clickToEdit/constants.js';
 import { STAMPED_ELEMENTS_SELECTOR } from '../domStamping/constants.js';
 
 export const STAGGER_DELAY = 10;
@@ -9,7 +10,10 @@ export class FlashAllManager {
   private pendingAnimationAbortController: AbortController | null = null;
   private disposed: boolean = false;
 
-  constructor(private readonly wrapperElement: ParentNode) {}
+  constructor(
+    private readonly wrapperElement: ParentNode,
+    private readonly overlayColors?: OverlayColors
+  ) {}
 
   async flash(scrollToNearestTarget: boolean) {
     if (this.disposed) return;
@@ -47,7 +51,7 @@ export class FlashAllManager {
       const targetsCount = targets.length;
 
       targets.map((target, index) => {
-        const overlay = new HighlightOverlay(target);
+        const overlay = new HighlightOverlay(target, { overlayColors: this.overlayColors });
         overlay.fadeIn(targetsCount < 50 ? index * STAGGER_DELAY : 0, abortController);
         this.overlays.push(overlay);
       });

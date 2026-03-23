@@ -54,7 +54,10 @@ const controller = createController({
   root: document.getElementById('preview-container'),
 
   // Optional: strip stega-encoded invisible characters from text content (default: false)
-  stripStega: false
+  stripStega: false,
+
+  // Optional: hue (0–359) of the overlay accent color (default: 17, orange)
+  hue: 200
 });
 
 // Control click-to-edit overlays
@@ -72,6 +75,7 @@ Returns a controller to manage DOM stamping and click-to-edit overlays.
 
 **Options:**
 - `root?: ParentNode`: Limit scanning to a specific container (default: `document`)
+- `hue?: number`: Hue angle (0–359) of the overlay accent color (default: `17`, orange). The library automatically computes a lightness value that guarantees readable white text on the overlay label at any hue.
 - `stripStega?: boolean`: Whether to strip stega-encoded invisible characters from text content after stamping (default: `false`). Stega embeds invisible, zero-width UTF-8 characters into text content to encode editing metadata.
   - When `false` (default): Stega encoding remains in the DOM, allowing controllers to be disposed and recreated on the same page. The invisible characters don't affect display but preserve the source of truth.
   - When `true`: Stega encoding is permanently removed from text nodes, providing clean `textContent` for programmatic access. However, recreating a controller on the same page won't detect elements since the encoding is lost.

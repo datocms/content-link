@@ -19,7 +19,7 @@ export default defineConfig([
       return {
         js: format === 'cjs' ? '.cjs' : '.js'
       };
-    },
+    }
   },
   // Stega entry point - lightweight utilities
   {
@@ -38,6 +38,6 @@ export default defineConfig([
       return {
         js: format === 'cjs' ? '.cjs' : '.js'
       };
-    },
-  },
+    }
+  }
 ]);

@@ -5,7 +5,7 @@
 import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   MANUAL_TARGET_STAMP_ATTRIBUTE,
-  STAMPED_ELEMENTS_SELECTOR,
+  STAMPED_ELEMENTS_SELECTOR
 } from '../domStamping/constants.js';
 
 export type EditableTarget = {
@@ -13,9 +13,7 @@ export type EditableTarget = {
   editUrl: string;
 };
 
-export function findEditableTarget(
-  from: EventTarget | Element | null,
-): EditableTarget | null {
+export function findEditableTarget(from: EventTarget | Element | null): EditableTarget | null {
   if (!from || !(from instanceof Element)) {
     return null;
   }

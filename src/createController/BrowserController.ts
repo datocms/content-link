@@ -9,29 +9,27 @@ import {
   isKeyboardEvent,
   isMouseEvent,
   resolveDocument,
-  toCompletePath,
+  toCompletePath
 } from '../utils/dom.js';
 import { extractInfo, extractItemIdsPerEnvironment } from '../utils/editUrl.js';
 import { ClickToEditManager } from './clickToEdit/ClickToEditManager.js';
+import { DEFAULT_HUE, buildOverlayColors, type OverlayColors } from './clickToEdit/constants.js';
 import { DomStampingManager } from './domStamping/DomStampingManager.js';
 import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   MANUAL_TARGET_STAMP_ATTRIBUTE,
-  STAMPED_ELEMENTS_SELECTOR,
+  STAMPED_ELEMENTS_SELECTOR
 } from './domStamping/constants.js';
 import { EventsManager } from './events/EventsManager.js';
 import { FlashAllManager } from './flash/FlashAllManager.js';
 import { FlashItemManager } from './flash/FlashItemManager.js';
-import type {
-  Controller,
-  CreateControllerOptions,
-  StampSummary,
-} from './types.js';
+import type { Controller, CreateControllerOptions, StampSummary } from './types.js';
 import type { WebPreviewsPluginMethods } from './webPreviewsPlugin/types.js';
 
 export class BrowserController implements Controller {
   private readonly wrapperElement: ParentNode;
   private readonly onNavigateTo?: (path: string) => void;
+  private readonly overlayColors: OverlayColors;
   private readonly eventsManager: EventsManager;
   private readonly clickToEditManager: ClickToEditManager;
   private readonly stampingManager: DomStampingManager;
@@ -53,15 +51,17 @@ export class BrowserController implements Controller {
   constructor(options: CreateControllerOptions) {
     this.wrapperElement = options.root ?? document;
     this.onNavigateTo = options.onNavigateTo;
+    this.overlayColors = buildOverlayColors(options.hue ?? DEFAULT_HUE);
 
     this.eventsManager = new EventsManager({
-      doc: this.document,
+      doc: this.document
     });
 
     this.clickToEditManager = new ClickToEditManager(
       this.document,
       (editUrl) => this.handleEditClick(editUrl),
       () => this.webPreviewsPluginConnection === null,
+      this.overlayColors
     );
 
     this.initializeWebPreviewsPluginConnection();
@@ -69,30 +69,26 @@ export class BrowserController implements Controller {
     this.stampingManager = new DomStampingManager(
       this.wrapperElement,
       (summary) => this.handleStampResult(summary),
-      options.stripStega ?? false,
+      options.stripStega ?? false
     );
 
-    this.flashAllManager = new FlashAllManager(this.wrapperElement);
+    this.flashAllManager = new FlashAllManager(this.wrapperElement, this.overlayColors);
 
     this.listenerAbortController = new AbortController();
 
-    this.document.addEventListener(
-      'keydown',
-      (event) => this.onKeyDown(event),
-      {
-        capture: true,
-        signal: this.listenerAbortController.signal,
-      },
-    );
+    this.document.addEventListener('keydown', (event) => this.onKeyDown(event), {
+      capture: true,
+      signal: this.listenerAbortController.signal
+    });
 
     this.document.addEventListener('keyup', (event) => this.onKeyUp(event), {
       capture: true,
-      signal: this.listenerAbortController.signal,
+      signal: this.listenerAbortController.signal
     });
 
     this.document.addEventListener('click', (event) => this.onClick(event), {
       capture: true,
-      signal: this.listenerAbortController.signal,
+      signal: this.listenerAbortController.signal
     });
 
     this.document.addEventListener(
@@ -102,7 +98,7 @@ export class BrowserController implements Controller {
           this.disableTemporaryClickToEditState();
         }
       },
-      { signal: this.listenerAbortController.signal },
+      { signal: this.listenerAbortController.signal }
     );
 
     getDocumentWindow(this.document)?.addEventListener(
@@ -110,7 +106,7 @@ export class BrowserController implements Controller {
       () => {
         this.disableTemporaryClickToEditState();
       },
-      { signal: this.listenerAbortController.signal },
+      { signal: this.listenerAbortController.signal }
     );
   }
 
@@ -189,6 +185,7 @@ export class BrowserController implements Controller {
       this.wrapperElement,
       itemId,
       this.webPreviewsPluginConnection.editUrlRegExp,
+      this.overlayColors
     );
     const flashed = flashSingleManager.flash(scrollToNearestTarget);
     this.flashItemManager = flashSingleManager;
@@ -208,9 +205,7 @@ export class BrowserController implements Controller {
       return;
     }
 
-    const stampedElements = this.wrapperElement.querySelectorAll(
-      STAMPED_ELEMENTS_SELECTOR,
-    );
+    const stampedElements = this.wrapperElement.querySelectorAll(STAMPED_ELEMENTS_SELECTOR);
 
     // Collect all edit URLs from stamped elements
     const editUrls = new Set<string>();
@@ -228,26 +223,21 @@ export class BrowserController implements Controller {
       path: this.currentPath,
       itemIdsPerEnvironment: extractItemIdsPerEnvironment(
         Array.from(editUrls),
-        this.webPreviewsPluginConnection.editUrlRegExp,
-      ),
+        this.webPreviewsPluginConnection.editUrlRegExp
+      )
     });
   }
 
   private handleEditClick(editUrl: string): void {
     if (this.webPreviewsPluginConnection) {
-      const info = extractInfo(
-        editUrl,
-        this.webPreviewsPluginConnection.editUrlRegExp,
-      );
+      const info = extractInfo(editUrl, this.webPreviewsPluginConnection.editUrlRegExp);
 
       if (info) {
         this.webPreviewsPluginConnection.parent.openItem(info);
       }
     } else {
       // Fallback: open in new tab
-      const opener =
-        this.document.defaultView ??
-        (typeof window !== 'undefined' ? window : null);
+      const opener = this.document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 
       opener?.open(editUrl, '_blank', 'noopener,noreferrer');
     }
@@ -274,17 +264,15 @@ export class BrowserController implements Controller {
           this.flashItem(payload.itemId, payload.scrollToNearestTarget);
         },
         setClickToEditEnabled: (
-          payload:
-            | { enabled: true; flash: { scrollToNearestTarget: boolean } }
-            | { enabled: false },
+          payload: { enabled: true; flash: { scrollToNearestTarget: boolean } } | { enabled: false }
         ) => {
           if (payload.enabled) {
             this.enableClickToEdit(payload.flash);
           } else {
             this.disableClickToEdit();
           }
-        },
-      },
+        }
+      }
     });
 
     const parent = await connection.promise;
@@ -306,7 +294,7 @@ export class BrowserController implements Controller {
         clearInterval(pingInterval);
         connection.destroy();
       },
-      editUrlRegExp: new RegExp(editUrlRegExp.source, editUrlRegExp.flags),
+      editUrlRegExp: new RegExp(editUrlRegExp.source, editUrlRegExp.flags)
     };
 
     await this.notifyStateChangeToWebPreviewsPlugin();
@@ -352,7 +340,7 @@ export class BrowserController implements Controller {
       const newClick = new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
-        view: window,
+        view: window
       });
 
       (event.target as HTMLElement).dispatchEvent(newClick);
@@ -388,12 +376,8 @@ export class BrowserController implements Controller {
   }
 
   private get isTopLevelWindowOrInWebPreviewsIframe() {
-    const opener =
-      this.document.defaultView ??
-      (typeof window !== 'undefined' ? window : null);
+    const opener = this.document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 
-    return (
-      this.webPreviewsPluginConnection || (opener && opener.parent === opener)
-    );
+    return this.webPreviewsPluginConnection || (opener && opener.parent === opener);
   }
 }

@@ -7,6 +7,8 @@ export type CreateControllerOptions = {
   root?: ParentNode;
   /** Callback invoked when the Web Previews plugin requests navigation to a different URL */
   onNavigateTo?: (path: string) => void;
+  /** Hue (0–359) of the overlay accent color. Default: 17 (orange). */
+  hue?: number;
   /**
    * Whether to strip stega-encoded invisible characters from text content after stamping.
    * Default: false (preserves stega encoding in the DOM)

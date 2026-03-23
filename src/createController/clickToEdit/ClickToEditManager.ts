@@ -1,4 +1,5 @@
 import { HighlightOverlay } from '../../utils/HighlightOverlay.js';
+import type { OverlayColors } from './constants.js';
 /**
  * Manages click-to-edit functionality: highlights editable regions under the pointer
  * and invokes callback when clicked. Absorbs all logic from setup.ts into a class-based manager.
@@ -18,7 +19,8 @@ export class ClickToEditManager {
   constructor(
     private readonly document: Document,
     private readonly onEditClick: (editUrl: string) => void,
-    private readonly shouldShowLabel: () => boolean = () => false
+    private readonly shouldShowLabel: () => boolean = () => false,
+    private readonly overlayColors?: OverlayColors
   ) {}
 
   isActive(): boolean {
@@ -138,7 +140,8 @@ export class ClickToEditManager {
         onDispose: () => {
           targetElement.style.cursor = prevCursor;
         },
-        showLabel: this.shouldShowLabel()
+        showLabel: this.shouldShowLabel(),
+        overlayColors: this.overlayColors
       });
       this.highlightOverlay.show();
     }

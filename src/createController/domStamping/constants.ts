@@ -3,8 +3,7 @@
  * Keeping them centralized avoids typos and makes it clear which stamps the SDK
  * writes to the page when identifying editable regions.
  */
-export const AUTOMATIC_TARGET_STAMP_ATTRIBUTE =
-  'data-datocms-auto-content-link-url';
+export const AUTOMATIC_TARGET_STAMP_ATTRIBUTE = 'data-datocms-auto-content-link-url';
 export const AUTOMATIC_STEGA_STAMP_ATTRIBUTE = 'data-datocms-contains-stega';
 export const MANUAL_TARGET_STAMP_ATTRIBUTE = 'data-datocms-content-link-url';
 export const GROUP_ATTRIBUTE = 'data-datocms-content-link-group';

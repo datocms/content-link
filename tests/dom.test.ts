@@ -1,30 +1,17 @@
 import * as stega from '@vercel/stega';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   GROUP_ATTRIBUTE,
   MANUAL_TARGET_STAMP_ATTRIBUTE,
-  SOURCE_STAMP_ATTRIBUTE,
+  SOURCE_STAMP_ATTRIBUTE
 } from '../src/createController/domStamping/constants.js';
 import { createController } from '../src/index.js';
 import * as decodeModule from '../src/stega/decode.js';
 
 const { vercelStegaCombine } = stega;
 
-const createRect = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): DOMRect =>
+const createRect = (x: number, y: number, width: number, height: number): DOMRect =>
   ({
     x,
     y,
@@ -36,7 +23,7 @@ const createRect = (
     bottom: y + height,
     toJSON() {
       return { x, y, width, height };
-    },
+    }
   }) as DOMRect;
 
 beforeAll(() => {
@@ -60,12 +47,12 @@ describe('createController', () => {
   it('stamps attributes from stega content', () => {
     const encodedText = vercelStegaCombine('Hero headline', {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=hero.title.en',
+      href: 'hero123#fieldPath=hero.title.en'
     });
 
     const encodedAlt = vercelStegaCombine('Hero image alt', {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=hero.image',
+      href: 'hero123#fieldPath=hero.image'
     });
 
     document.body.innerHTML = `
@@ -81,17 +68,15 @@ describe('createController', () => {
     const heroImage = document.getElementById('hero-image') as HTMLImageElement;
 
     expect(heroText.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'hero123#fieldPath=hero.title.en',
+      'hero123#fieldPath=hero.title.en'
     );
     // Default behavior preserves stega encoding (invisible characters)
     expect(heroText.textContent).toContain('Hero headline');
 
-    const imageWrapper = heroImage.closest(
-      `[${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`,
-    ) as HTMLElement;
+    const imageWrapper = heroImage.closest(`[${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`) as HTMLElement;
     expect(imageWrapper).not.toBeNull();
     expect(imageWrapper.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'hero123#fieldPath=hero.image',
+      'hero123#fieldPath=hero.image'
     );
     // Default behavior preserves stega encoding (invisible characters)
     expect(heroImage.getAttribute('alt')).toContain('Hero image alt');
@@ -99,15 +84,13 @@ describe('createController', () => {
     controller.dispose();
 
     expect(heroText.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(false);
-    expect(imageWrapper.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      false,
-    );
+    expect(imageWrapper.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(false);
   });
 
   it('keeps overlay strictly attribute-based', () => {
     const payload = {
       origin: 'datocms.com',
-      href: 'hero123#fieldPath=headline',
+      href: 'hero123#fieldPath=headline'
     };
     const encoded = vercelStegaCombine('Story headline', payload);
 
@@ -128,8 +111,8 @@ describe('createController', () => {
         bubbles: true,
         pointerType: 'mouse',
         clientX: 24,
-        clientY: 36,
-      }),
+        clientY: 36
+      })
     );
     element.dispatchEvent(
       new MouseEvent('click', {
@@ -137,14 +120,14 @@ describe('createController', () => {
         cancelable: true,
         button: 0,
         clientX: 24,
-        clientY: 36,
-      }),
+        clientY: 36
+      })
     );
 
     expect(window.open).toHaveBeenCalledWith(
       'hero123#fieldPath=headline',
       '_blank',
-      'noopener,noreferrer',
+      'noopener,noreferrer'
     );
     expect(decodeSpy).not.toHaveBeenCalled();
 
@@ -161,7 +144,7 @@ describe('createController', () => {
 
     const encoded = vercelStegaCombine('Fresh content', {
       origin: 'datocms.com',
-      href: 'item-123#fieldPath=excerpt',
+      href: 'item-123#fieldPath=excerpt'
     });
 
     const paragraph = document.createElement('p');
@@ -172,7 +155,7 @@ describe('createController', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(paragraph.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-123#fieldPath=excerpt',
+      'item-123#fieldPath=excerpt'
     );
     // Default behavior preserves stega encoding (invisible characters)
     expect(paragraph.textContent).toContain('Fresh content');
@@ -183,12 +166,12 @@ describe('createController', () => {
   it('warns when multiple stega payloads stamp the same element', () => {
     const firstEncoded = vercelStegaCombine('Primary title', {
       origin: 'datocms.com',
-      href: 'node-1#fieldPath=title',
+      href: 'node-1#fieldPath=title'
     });
 
     const secondEncoded = vercelStegaCombine('Secondary title', {
       origin: 'datocms.com',
-      href: 'node-2#fieldPath=subtitle',
+      href: 'node-2#fieldPath=subtitle'
     });
 
     const collide = document.createElement('p');
@@ -203,13 +186,11 @@ describe('createController', () => {
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const [message, elementArg] = warnSpy.mock.calls[0];
-    expect(message).toContain(
-      'Multiple stega-encoded payloads resolved to the same DOM element',
-    );
+    expect(message).toContain('Multiple stega-encoded payloads resolved to the same DOM element');
     expect(elementArg).toBe(collide);
 
     expect(collide.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'node-2#fieldPath=subtitle',
+      'node-2#fieldPath=subtitle'
     );
 
     controller.dispose();
@@ -226,7 +207,7 @@ describe('createController', () => {
 
     const encodedPayload = {
       origin: 'datocms.com',
-      href: 'node-2#fieldPath=subheading',
+      href: 'node-2#fieldPath=subheading'
     };
 
     const encoded = vercelStegaCombine('Subheading', encodedPayload);
@@ -236,27 +217,25 @@ describe('createController', () => {
     const controller = createController();
 
     const manual = document.getElementById('manual') as HTMLElement;
-    expect(
-      encodedParagraph.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE),
-    ).toBe('node-2#fieldPath=subheading');
+    expect(encodedParagraph.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
+      'node-2#fieldPath=subheading'
+    );
 
     controller.dispose();
 
     expect(manual.getAttribute(MANUAL_TARGET_STAMP_ATTRIBUTE)).toBe('manual-1');
-    expect(
-      encodedParagraph.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE),
-    ).toBe(false);
+    expect(encodedParagraph.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(false);
   });
 
   it('honors wrapper targeting for text and zero-size images', () => {
     const encodedText = vercelStegaCombine('Wrapped text', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=wrapper.text',
+      href: 'item-1#fieldPath=wrapper.text'
     });
 
     const encodedAlt = vercelStegaCombine('Wrapped image', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=wrapper.image',
+      href: 'item-1#fieldPath=wrapper.image'
     });
 
     document.body.innerHTML = `
@@ -268,9 +247,7 @@ describe('createController', () => {
       </div>
     `;
 
-    const wrappedImage = document.getElementById(
-      'wrapped-image',
-    ) as HTMLImageElement;
+    const wrappedImage = document.getElementById('wrapped-image') as HTMLImageElement;
     wrappedImage.getBoundingClientRect = () => createRect(0, 0, 0, 0);
 
     const controller = createController();
@@ -279,17 +256,13 @@ describe('createController', () => {
     const innerSpan = document.getElementById('wrapped') as HTMLElement;
 
     expect(textWrapper.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-1#fieldPath=wrapper.text',
+      'item-1#fieldPath=wrapper.text'
     );
-    expect(innerSpan.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      false,
-    );
+    expect(innerSpan.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(false);
 
-    const imageWrapper = document.getElementById(
-      'image-wrapper',
-    ) as HTMLElement;
+    const imageWrapper = document.getElementById('image-wrapper') as HTMLElement;
     expect(imageWrapper.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-1#fieldPath=wrapper.image',
+      'item-1#fieldPath=wrapper.image'
     );
     // Default behavior preserves stega encoding (invisible characters)
     expect(wrappedImage.getAttribute('alt')).toContain('Wrapped image');
@@ -300,7 +273,7 @@ describe('createController', () => {
   it('stamps attributes from source attribute', () => {
     const encodedSource = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'card123#fieldPath=card.metadata',
+      href: 'card123#fieldPath=card.metadata'
     });
 
     document.body.innerHTML = `
@@ -317,7 +290,7 @@ describe('createController', () => {
     const card = document.getElementById('card') as HTMLElement;
 
     expect(card.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'card123#fieldPath=card.metadata',
+      'card123#fieldPath=card.metadata'
     );
     // Source attribute should still be present when stripStega is false
     expect(card.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(true);
@@ -330,7 +303,7 @@ describe('createController', () => {
   it('strips source attribute when stripStega is true', () => {
     const encodedSource = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'widget456#fieldPath=widget.data',
+      href: 'widget456#fieldPath=widget.data'
     });
 
     document.body.innerHTML = `
@@ -346,7 +319,7 @@ describe('createController', () => {
     const widget = document.getElementById('widget') as HTMLElement;
 
     expect(widget.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'widget456#fieldPath=widget.data',
+      'widget456#fieldPath=widget.data'
     );
     // Source attribute should be removed when stripStega is true
     expect(widget.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(false);
@@ -362,7 +335,7 @@ describe('createController', () => {
 
     const encodedSource = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'item-789#fieldPath=item.metadata',
+      href: 'item-789#fieldPath=item.metadata'
     });
 
     const div = document.createElement('div');
@@ -374,7 +347,7 @@ describe('createController', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(div.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-789#fieldPath=item.metadata',
+      'item-789#fieldPath=item.metadata'
     );
     expect(div.hasAttribute(SOURCE_STAMP_ATTRIBUTE)).toBe(true);
 
@@ -384,12 +357,12 @@ describe('createController', () => {
   it('updates stamp when source attribute changes', async () => {
     const firstEncoded = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=field1',
+      href: 'item-1#fieldPath=field1'
     });
 
     const secondEncoded = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'item-2#fieldPath=field2',
+      href: 'item-2#fieldPath=field2'
     });
 
     document.body.innerHTML = `
@@ -400,18 +373,14 @@ describe('createController', () => {
 
     const controller = createController();
 
-    expect(mutable.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-1#fieldPath=field1',
-    );
+    expect(mutable.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe('item-1#fieldPath=field1');
 
     // Change the source attribute
     mutable.setAttribute(SOURCE_STAMP_ATTRIBUTE, secondEncoded);
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(mutable.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-2#fieldPath=field2',
-    );
+    expect(mutable.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe('item-2#fieldPath=field2');
 
     controller.dispose();
   });
@@ -419,7 +388,7 @@ describe('createController', () => {
   it('combines source attribute with wrapper targeting', () => {
     const encodedSource = vercelStegaCombine('', {
       origin: 'datocms.com',
-      href: 'item-1#fieldPath=wrapper.metadata',
+      href: 'item-1#fieldPath=wrapper.metadata'
     });
 
     document.body.innerHTML = `
@@ -437,7 +406,7 @@ describe('createController', () => {
 
     // Should stamp the wrapper, not the inner element
     expect(wrapper.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
-      'item-1#fieldPath=wrapper.metadata',
+      'item-1#fieldPath=wrapper.metadata'
     );
     expect(inner.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(false);
 

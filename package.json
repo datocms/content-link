@@ -16,13 +16,7 @@
       "require": "./dist/stega/index.cjs"
     }
   },
-  "files": [
-    "src",
-    "dist",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
+  "files": ["src", "dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "engines": {
     "node": ">=18"
   },
