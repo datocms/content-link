@@ -1,6 +1,6 @@
 {
   "name": "@datocms/content-link",
-  "version": "0.3.18",
+  "version": "0.3.19",
   "description": "Lightweight library for DatoCMS visual editing overlays and content links.",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,13 @@
       "require": "./dist/stega/index.cjs"
     }
   },
-  "files": ["src", "dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=18"
   },
