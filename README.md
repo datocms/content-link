@@ -433,7 +433,7 @@ With this setup:
 ## Low-level utilities
 
 ```ts
-import { decodeStega, stripStega } from '@datocms/content-link';
+import { decodeStega, stripStega, revealStega } from '@datocms/content-link';
 
 // Decode a raw string that may contain stega
 const info = decodeStega(someString);
@@ -441,6 +441,10 @@ const info = decodeStega(someString);
 
 // Remove stega characters for display
 const clean = stripStega(someString);
+
+// Make stega visible for debugging (works with any value, including full GraphQL responses)
+const debug = revealStega(graphqlResponse);
+console.log(JSON.stringify(debug, null, 2));
 ```
 
 **`decodeStega(input: string)`**
@@ -452,6 +456,11 @@ const clean = stripStega(someString);
 - Works with any data type: strings, objects, arrays, and primitives
 - Converts input to JSON, removes all stega-encoded segments using `VERCEL_STEGA_REGEX`, then parses back to original type
 - Returns the cleaned data without invisible stega characters
+
+**`revealStega(input: any)`**
+- Works with any data type, just like `stripStega`
+- Instead of removing stega, replaces each invisible segment with a visible `[STEGA:/editor/item_types/…]` marker
+- Useful for debugging to see which strings carry Visual Editing metadata
 
 ```ts
 // Works with strings
@@ -470,6 +479,20 @@ stripStega({
 
 // Works with arrays
 stripStega(["First\u200E", "Second\u200E", "Third\u200E"])
+
+// Reveal stega in a full GraphQL response for debugging
+revealStega({
+  blog: {
+    title: "Hello World\u200E",
+    author: { name: "Alice\u200E" }
+  }
+})
+// {
+//   blog: {
+//     title: "Hello World[STEGA:/editor/item_types/123/items/456]",
+//     author: { name: "Alice[STEGA:/editor/item_types/789/items/012]" }
+//   }
+// }
 ```
 
 ## Troubleshooting

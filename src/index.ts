@@ -6,5 +6,5 @@ export type {
   StampSummary,
   State
 } from './createController/types.js';
-export { decodeStega, stripStega } from './stega/decode.js';
+export { decodeStega, revealStega, stripStega } from './stega/decode.js';
 export type { DecodedInfo } from './stega/types.js';

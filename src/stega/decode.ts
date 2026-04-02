@@ -130,3 +130,50 @@ export function decodeStega(input: string): DecodedInfo | null {
 export function stripStega<T>(input: T): T {
   return vercelStegaClean(input);
 }
+
+/**
+ * Replaces invisible stega-encoded segments with visible markers, making it
+ * easy to spot which strings in a GraphQL response (or any other value)
+ * carry Visual Editing metadata.
+ *
+ * Works exactly like {@link stripStega} — accepts any JSON-serialisable value
+ * (string, object, array, etc.) — but instead of silently removing the hidden
+ * characters it replaces each occurrence with a human-readable tag:
+ *
+ * ```
+ * [STEGA:/editor/item_types/123/items/456]
+ * ```
+ *
+ * @template T - The type of the input value
+ * @param {T} input - Any JavaScript value (string, object, array, number, etc.)
+ * @returns {T} The same value with stega encodings replaced by visible markers
+ *
+ * @example
+ * revealStega("Hello world")
+ * // "Hello [STEGA:/editor/item_types/123/items/456]world"
+ *
+ * @example
+ * // Works with entire GraphQL responses
+ * revealStega(graphqlResponse)
+ */
+export function revealStega<T>(input: T): T {
+  const json = JSON.stringify(input);
+  if (json === undefined) return input;
+
+  const revealed = json.replace(VERCEL_STEGA_REGEX, (match) => {
+    let decoded: unknown;
+    try {
+      decoded = vercelStegaDecode(match);
+    } catch {
+      decoded = null;
+    }
+
+    if (isDecodedInfo(decoded)) {
+      return `[STEGA:${decoded.href}]`;
+    }
+
+    return '[STEGA:?]';
+  });
+
+  return JSON.parse(revealed) as T;
+}
