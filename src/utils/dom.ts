@@ -58,6 +58,18 @@ export function getDocumentWindow(document: Document) {
   return document.defaultView ?? (typeof window !== 'undefined' ? window : null);
 }
 
+export function isEditableElementFocused(document: Document): boolean {
+  const active = document.activeElement as HTMLElement | null;
+  if (!active) {
+    return false;
+  }
+  const tag = active.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    return true;
+  }
+  return active.isContentEditable;
+}
+
 /** Compute the bounding box for the target element, ignoring zero-size or hidden nodes. */
 export function measure(
   el: Element

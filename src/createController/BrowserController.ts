@@ -6,6 +6,7 @@ import penpal, { type AsyncMethodReturns } from 'penpal';
 import {
   getDocumentWindow,
   inIframe,
+  isEditableElementFocused,
   isKeyboardEvent,
   isMouseEvent,
   resolveDocument,
@@ -309,6 +310,10 @@ export class BrowserController implements Controller {
       return;
     }
 
+    if (isEditableElementFocused(this.document)) {
+      return;
+    }
+
     this.enableTemporaryClickToEditState();
   }
 
@@ -318,6 +323,10 @@ export class BrowserController implements Controller {
     }
 
     if (!this.isTopLevelWindowOrInWebPreviewsIframe) {
+      return;
+    }
+
+    if (isEditableElementFocused(this.document)) {
       return;
     }
 
