@@ -196,6 +196,47 @@ describe('createController', () => {
     controller.dispose();
   });
 
+  it('silences collision warnings when warnings are disabled', () => {
+    const firstEncoded = vercelStegaCombine('Primary title', {
+      origin: 'datocms.com',
+      href: 'node-1#fieldPath=title'
+    });
+
+    const secondEncoded = vercelStegaCombine('Secondary title', {
+      origin: 'datocms.com',
+      href: 'node-2#fieldPath=subtitle'
+    });
+
+    const collide = document.createElement('p');
+    collide.id = 'collide';
+    collide.append(document.createTextNode(firstEncoded));
+    collide.append(document.createTextNode(secondEncoded));
+    document.body.appendChild(collide);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const controller = createController({ warnings: false });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(collide.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
+      'node-2#fieldPath=subtitle'
+    );
+
+    controller.dispose();
+  });
+
+  it('silences missing editable element warnings when warnings are disabled', () => {
+    document.body.innerHTML = '<main><p>Plain content</p></main>';
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const controller = createController({ warnings: false });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    controller.dispose();
+  });
+
   it('only removes stega attributes on dispose', () => {
     document.body.innerHTML = `
       <div
