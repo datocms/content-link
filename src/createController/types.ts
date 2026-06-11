@@ -25,10 +25,10 @@ export type CreateControllerOptions = {
    */
   stripStega?: boolean;
   /**
-   * Whether to emit package diagnostic warnings to the console.
-   * Default: true.
+   * Whether to suppress package diagnostic warnings in the console.
+   * Default: false.
    */
-  warnings?: boolean;
+  silenceWarnings?: boolean;
 };
 
 export type StampSummary = {

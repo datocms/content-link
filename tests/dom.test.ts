@@ -196,7 +196,7 @@ describe('createController', () => {
     controller.dispose();
   });
 
-  it('silences collision warnings when warnings are disabled', () => {
+  it('silences collision warnings when silenceWarnings is enabled', () => {
     const firstEncoded = vercelStegaCombine('Primary title', {
       origin: 'datocms.com',
       href: 'node-1#fieldPath=title'
@@ -215,7 +215,7 @@ describe('createController', () => {
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const controller = createController({ warnings: false });
+    const controller = createController({ silenceWarnings: true });
 
     expect(warnSpy).not.toHaveBeenCalled();
     expect(collide.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe(
@@ -225,12 +225,12 @@ describe('createController', () => {
     controller.dispose();
   });
 
-  it('silences missing editable element warnings when warnings are disabled', () => {
+  it('silences missing editable element warnings when silenceWarnings is enabled', () => {
     document.body.innerHTML = '<main><p>Plain content</p></main>';
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const controller = createController({ warnings: false });
+    const controller = createController({ silenceWarnings: true });
 
     expect(warnSpy).not.toHaveBeenCalled();
 
