@@ -4,6 +4,8 @@
   "description": "Lightweight library for DatoCMS visual editing overlays and content links.",
   "type": "module",
   "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
