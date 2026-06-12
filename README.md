@@ -56,6 +56,9 @@ const controller = createController({
   // Optional: strip stega-encoded invisible characters from text content (default: false)
   stripStega: false,
 
+  // Optional: silence Content Link console warnings (default: false)
+  silenceWarnings: true,
+
   // Optional: hue (0–359) of the overlay accent color (default: 17, orange)
   hue: 200
 });
@@ -79,6 +82,7 @@ Returns a controller to manage DOM stamping and click-to-edit overlays.
 - `stripStega?: boolean`: Whether to strip stega-encoded invisible characters from text content after stamping (default: `false`). Stega embeds invisible, zero-width UTF-8 characters into text content to encode editing metadata.
   - When `false` (default): Stega encoding remains in the DOM, allowing controllers to be disposed and recreated on the same page. The invisible characters don't affect display but preserve the source of truth.
   - When `true`: Stega encoding is permanently removed from text nodes, providing clean `textContent` for programmatic access. However, recreating a controller on the same page won't detect elements since the encoding is lost.
+- `silenceWarnings?: boolean`: Whether to suppress Content Link diagnostic warnings in the console (default: `false`). Set to `true` only when you have reviewed and accepted the warning source.
 
 **Controller methods:**
 - `enableClickToEdit(flashAll?: { scrollToNearestTarget: boolean })`: Turn click-to-edit overlays on (allows clicking elements to open the editor). Optionally pass `flashAll` to briefly highlight all editable elements with an animated effect, and scroll to the nearest one if none are visible.
@@ -383,6 +387,8 @@ Both stega-encoded strings resolve to the same `<p>` element. The library logs a
 </p>
 ```
 
+If the warning is expected and you have accepted the ambiguous target, you can silence Content Link warnings with `createController({ silenceWarnings: true })`. This only suppresses the console warning; it does not change the underlying stamping behavior.
+
 ### Structured Text fields
 
 Structured Text fields require special attention because of how stega encoding works within them:
@@ -503,6 +509,7 @@ revealStega({
 - **Web Previews plugin integration not working**: The plugin connection only works when your preview is running inside the Web Previews plugin iframe. Outside of the plugin, edit URLs will open in a new tab as a fallback.
 - **Controller recreation issues**: If you dispose and recreate a controller on the same page, the second controller will only find elements if `stripStega: false` (the default). If you previously used `stripStega: true`, the stega encoding was permanently removed and cannot be recovered. In this case, you'll need to reload the page or re-fetch the content.
 - **Layout issues caused by stega encoding**: The invisible zero-width characters can cause unexpected letter-spacing or text breaking out of containers. To fix this, either use `stripStega: true`, or use CSS: `[data-datocms-contains-stega] { letter-spacing: 0 !important; }`. This attribute is automatically added to elements with stega-encoded content when `stripStega: false` (the default).
+- **Known warning noise**: If you have reviewed the warning source and want to keep the current markup, pass `silenceWarnings: true` to `createController()`. This silences Content Link warnings without changing which elements are stamped.
 
 ## License
 

@@ -24,7 +24,8 @@ export class DomStampingManager {
   constructor(
     private readonly root: ParentNode,
     private readonly onStamp: (summary: StampSummary) => void,
-    private readonly stripStega: boolean = false
+    private readonly stripStega: boolean = false,
+    private readonly silenceWarnings: boolean = false
   ) {
     this.observer = new MutationObserver((mutations) => this.handleMutations(mutations));
 
@@ -117,7 +118,7 @@ export class DomStampingManager {
             scope: this.root
           };
 
-    if (firstStamping && combinedSummary.appliedStamps.size === 0) {
+    if (!this.silenceWarnings && firstStamping && combinedSummary.appliedStamps.size === 0) {
       const message =
         '[@datocms/content-link] No editable elements were detected after initialization. ' +
         'Make sure that Content Link headers are enabled in your GraphQL requests! ' +
@@ -251,7 +252,7 @@ export class DomStampingManager {
     // Check for collision within this pass
     const existingStamp = appliedStamps.get(target);
 
-    if (existingStamp && existingStamp !== decoded.href) {
+    if (!this.silenceWarnings && existingStamp && existingStamp !== decoded.href) {
       this.warnCollision(target, existingStamp, elementWithStega, decoded.href);
     }
 

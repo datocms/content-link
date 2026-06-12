@@ -70,7 +70,8 @@ export class BrowserController implements Controller {
     this.stampingManager = new DomStampingManager(
       this.wrapperElement,
       (summary) => this.handleStampResult(summary),
-      options.stripStega ?? false
+      options.stripStega ?? false,
+      options.silenceWarnings ?? false
     );
 
     this.flashAllManager = new FlashAllManager(this.wrapperElement, this.overlayColors);

@@ -24,6 +24,11 @@ export type CreateControllerOptions = {
    * - Useful if you need clean textContent for programmatic access
    */
   stripStega?: boolean;
+  /**
+   * Whether to suppress package diagnostic warnings in the console.
+   * Default: false.
+   */
+  silenceWarnings?: boolean;
 };
 
 export type StampSummary = {
