@@ -1,6 +1,6 @@
 {
   "name": "@datocms/content-link",
-  "version": "0.3.22",
+  "version": "0.3.23",
   "description": "Lightweight library for DatoCMS visual editing overlays and content links.",
   "type": "module",
   "types": "./dist/index.d.ts",
