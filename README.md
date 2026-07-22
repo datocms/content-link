@@ -501,6 +501,57 @@ revealStega({
 // }
 ```
 
+### Disabling Content Link encoding for a specific field
+
+By default, when [visual editing](#…) is active every `string`, `text`, and
+`structured_text` field emits invisible [stega](#low-level-utilities) metadata
+in the Content Delivery API response, so that `decodeStega` and the overlay can
+map a rendered value back to its editing URL.
+
+Sometimes that encoding gets in the way — a value is passed to something that
+can't tolerate the extra invisible characters (a slug, an `<option value>`, a
+lookup key, a string compared for equality, a value forwarded to a third-party
+API, etc.). For these cases you can now turn Content Link encoding **off for an
+individual field** via the Content Management API, without disabling visual
+editing for the whole project.
+
+Each field exposes a `content_link_enabled` boolean attribute:
+
+- Defaults to `true` (encoding is emitted as before).
+- Set it to `false` to keep that field's CDA output free of stega metadata even
+  when visual editing is enabled — the field returns its plain value.
+- It can only be set to `false` on the field types that can actually carry
+  stega: **`string`**, **`text`**, and **`structured_text`**. Attempting to
+  disable it on any other field type returns a `422` validation error.
+
+```ts
+import { buildClient } from '@datocms/cma-client';
+
+const client = buildClient({ apiToken: '<YOUR_API_TOKEN>' });
+
+// Opt a field out of Content Link encoding
+await client.fields.update('<field_id_or_api_key>', {
+  content_link_enabled: false,
+});
+
+// Or set it at creation time
+await client.fields.create('<item_type_id>', {
+  label: 'Internal reference',
+  api_key: 'internal_reference',
+  field_type: 'string',
+  content_link_enabled: false,
+});
+```
+
+The flag is returned on every serialized field and is preserved when a field is
+duplicated or when an environment is forked.
+
+> [!NOTE]
+> This is a superset of the existing behavior: `string` and `text` fields that
+> carry a `format` validator already skip stega encoding automatically.
+> `content_link_enabled: false` lets you opt out explicitly, for any of the
+> three supported field types, regardless of validators.
+
 ## Troubleshooting
 
 - **No overlays appear**: Ensure your fetch requests include the `contentLink` and `baseEditingUrl` options. `baseEditingUrl` should be set to your DatoCMS project admin URL (e.g., `https://<YOUR-PROJECT-NAME>.admin.datocms.com`). The stega-encoded metadata is only included in responses when these options are present. Also, make sure you've called `enableClickToEdit()` on the controller.
@@ -510,6 +561,12 @@ revealStega({
 - **Controller recreation issues**: If you dispose and recreate a controller on the same page, the second controller will only find elements if `stripStega: false` (the default). If you previously used `stripStega: true`, the stega encoding was permanently removed and cannot be recovered. In this case, you'll need to reload the page or re-fetch the content.
 - **Layout issues caused by stega encoding**: The invisible zero-width characters can cause unexpected letter-spacing or text breaking out of containers. To fix this, either use `stripStega: true`, or use CSS: `[data-datocms-contains-stega] { letter-spacing: 0 !important; }`. This attribute is automatically added to elements with stega-encoded content when `stripStega: false` (the default).
 - **Known warning noise**: If you have reviewed the warning source and want to keep the current markup, pass `silenceWarnings: true` to `createController()`. This silences Content Link warnings without changing which elements are stamped.
+- **A field's value contains stray invisible characters** (breaking slugs,
+equality checks, `value` attributes, or third-party lookups). This is the
+stega metadata emitted for visual editing. If a given field should never carry
+it, disable encoding for that field by setting
+[`content_link_enabled: false`](#disabling-content-link-encoding-for-a-specific-field)
+via the CMA. To strip it at render time instead, use [`stripStega`](#low-level-utilities).
 
 ## License
 
