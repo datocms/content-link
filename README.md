@@ -503,7 +503,7 @@ revealStega({
 
 ### Disabling Content Link encoding for a specific field
 
-By default, when [visual editing](#…) is active every `string`, `text`, and
+By default, when visual editing is active every `string`, `text`, and
 `structured_text` field emits invisible [stega](#low-level-utilities) metadata
 in the Content Delivery API response, so that `decodeStega` and the overlay can
 map a rendered value back to its editing URL.
@@ -511,7 +511,7 @@ map a rendered value back to its editing URL.
 Sometimes that encoding gets in the way — a value is passed to something that
 can't tolerate the extra invisible characters (a slug, an `<option value>`, a
 lookup key, a string compared for equality, a value forwarded to a third-party
-API, etc.). For these cases you can now turn Content Link encoding **off for an
+API, etc.). For these cases you can turn Content Link encoding **off for an
 individual field** via the Content Management API, without disabling visual
 editing for the whole project.
 
@@ -545,12 +545,6 @@ await client.fields.create('<item_type_id>', {
 
 The flag is returned on every serialized field and is preserved when a field is
 duplicated or when an environment is forked.
-
-> [!NOTE]
-> This is a superset of the existing behavior: `string` and `text` fields that
-> carry a `format` validator already skip stega encoding automatically.
-> `content_link_enabled: false` lets you opt out explicitly, for any of the
-> three supported field types, regardless of validators.
 
 ## Troubleshooting
 
