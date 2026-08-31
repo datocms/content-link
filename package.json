@@ -43,7 +43,10 @@
     "format": "biome format --write .",
     "format:check": "biome check .",
     "prepublishOnly": "npm run build && npm run test",
-    "example": "npm run build && serve ."
+    "example": "npm run build && serve .",
+    "changeset": "changeset",
+    "release": "release-toolchain",
+    "release:next": "release-toolchain --tag next"
   },
   "keywords": [
     "datocms",
@@ -71,6 +74,8 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^3.0.1",
+    "@datocms/release-toolchain": "github:datocms/release-toolchain#v1.0.0",
     "@types/jsdom": "^21.1.0",
     "@types/node": "^20.14.10",
     "@vercel/stega": "^0.1.2",
@@ -78,7 +83,6 @@
     "compute-scroll-into-view": "^3.1.1",
     "dotenv": "^16.4.5",
     "jsdom": "^24.0.0",
-    "np": "^10.2.0",
     "penpal": "^4.1.1",
     "pkg-pr-new": "^0.0.88",
     "rimraf": "^5.0.5",
