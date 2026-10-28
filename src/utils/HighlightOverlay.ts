@@ -16,6 +16,9 @@ import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
 import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
 const FADE_DELAY = 200;
+// The label sits in the overlay's top-right corner, inside the border: match the
+// border's inner curve there, and round the corner that points into the box.
+const LABEL_BORDER_RADIUS = `0 calc(${DEFAULT_BORDER_RADIUS} - ${DEFAULT_BORDER_WIDTH}) 0 ${DEFAULT_BORDER_RADIUS}`;
 
 export interface HighlightOverlayOptions {
   onDispose?: () => void;
@@ -120,9 +123,7 @@ export class HighlightOverlay {
     overlay.style.width = '0';
     overlay.style.height = '0';
     overlay.style.border = `${DEFAULT_BORDER_WIDTH} solid ${this.overlayColors.borderColor}`;
-    overlay.style.borderRadius = withLabel
-      ? `${DEFAULT_BORDER_RADIUS} 0 ${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS}`
-      : DEFAULT_BORDER_RADIUS;
+    overlay.style.borderRadius = DEFAULT_BORDER_RADIUS;
     overlay.style.background = this.overlayColors.backgroundColor;
     overlay.style.boxSizing = 'border-box';
     overlay.style.pointerEvents = 'none';
@@ -136,12 +137,14 @@ export class HighlightOverlay {
       const label = this.document.createElement('div');
       label.textContent = 'Open in DatoCMS ↗';
       label.style.position = 'absolute';
-      label.style.bottom = '100%';
-      label.style.right = `-${DEFAULT_BORDER_WIDTH}`;
+      // Inside the box (top-right corner), so the pointer can reach it without leaving
+      // the target. The overlay has pointer-events: none, so clicks land on the target.
+      label.style.top = '0';
+      label.style.right = '0';
       label.style.backgroundColor = this.overlayColors.borderColor;
       label.style.color = 'white';
       label.style.padding = '4px 12px';
-      label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
+      label.style.borderRadius = LABEL_BORDER_RADIUS;
       label.style.fontSize = '13px';
       label.style.fontWeight = '600';
       label.style.fontFamily = 'system-ui, -apple-system, sans-serif';
@@ -178,19 +181,19 @@ export class HighlightOverlay {
       if (label) {
         const isNarrow = rect.width + DEFAULT_OVERLAY_PADDING * 2 < 150;
         if (isNarrow) {
+          label.style.top = 'auto';
           label.style.bottom = `calc(100% + 10px)`;
           label.style.right = 'auto';
           label.style.left = '50%';
           label.style.transform = 'translateX(-50%)';
           label.style.borderRadius = `${DEFAULT_BORDER_RADIUS}`;
-          this.overlayElement.style.borderRadius = DEFAULT_BORDER_RADIUS;
         } else {
-          label.style.bottom = '100%';
-          label.style.right = `-${DEFAULT_BORDER_WIDTH}`;
+          label.style.top = '0';
+          label.style.bottom = 'auto';
+          label.style.right = '0';
           label.style.left = 'auto';
           label.style.transform = 'none';
-          label.style.borderRadius = `${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS} 0 0`;
-          this.overlayElement.style.borderRadius = `${DEFAULT_BORDER_RADIUS} 0 ${DEFAULT_BORDER_RADIUS} ${DEFAULT_BORDER_RADIUS}`;
+          label.style.borderRadius = LABEL_BORDER_RADIUS;
         }
       }
     }
