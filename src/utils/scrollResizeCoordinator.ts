@@ -5,10 +5,15 @@
  * set of listeners per document.
  */
 
-import { getDocumentWindow } from './dom.js';
+import { type LayoutReadCache, createLayoutReadCache, getDocumentWindow } from './dom.js';
 import { rafThrottle } from './rafThrottle.js';
 
-type Callback = () => void;
+/**
+ * A callback reads the layout and returns a function that writes the styles.
+ * The coordinator calls all the callbacks first, then all the write functions.
+ * Thus the browser computes the layout one time for each frame.
+ */
+type Callback = (cache: LayoutReadCache) => () => void;
 
 class ScrollResizeCoordinator {
   private callbacks = new Set<Callback>();
@@ -16,10 +21,21 @@ class ScrollResizeCoordinator {
   private rafHandler = rafThrottle(() => {
     // Call all registered callbacks (snapshot to avoid mutation during iteration)
     const cbs = Array.from(this.callbacks);
+    const cache = createLayoutReadCache();
+    const writes: Array<() => void> = [];
+
     for (const cb of cbs) {
       try {
-        cb();
+        writes.push(cb(cache));
       } catch (err) {
+        // Swallow errors to keep other callbacks alive
+      }
+    }
+
+    for (const write of writes) {
+      try {
+        write();
+      } catch {
         // Swallow errors to keep other callbacks alive
       }
     }

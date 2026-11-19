@@ -55,6 +55,8 @@ export class FlashAllManager {
         overlay.fadeIn(targetsCount < 50 ? index * STAGGER_DELAY : 0, abortController);
         this.overlays.push(overlay);
       });
+
+      HighlightOverlay.showAll(this.overlays);
     } catch (_) {
       // animation cancelled
     }

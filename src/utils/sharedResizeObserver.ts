@@ -4,7 +4,14 @@
  * all observations share a single observer instance per window.
  */
 
-type ResizeCallback = () => void;
+import { type LayoutReadCache, createLayoutReadCache } from './dom.js';
+
+/**
+ * A callback reads the layout and returns a function that writes the styles.
+ * The observer calls all the callbacks first, then all the write functions.
+ * Thus the browser computes the layout one time for each delivery.
+ */
+type ResizeCallback = (cache: LayoutReadCache) => () => void;
 
 function getResizeObserverCtor(window: Window | null): typeof ResizeObserver | undefined {
   if (window && 'ResizeObserver' in window) {
@@ -23,13 +30,20 @@ class SharedResizeObserver {
     const ResizeObserverCtor = getResizeObserverCtor(this.window);
     if (ResizeObserverCtor) {
       this.observer = new ResizeObserverCtor((entries: ResizeObserverEntry[]) => {
+        const cache = createLayoutReadCache();
+        const writes: Array<() => void> = [];
+
         for (const entry of entries) {
           const callbacks = this.callbacks.get(entry.target);
           if (callbacks) {
             for (const callback of callbacks) {
-              callback();
+              writes.push(callback(cache));
             }
           }
+        }
+
+        for (const write of writes) {
+          write();
         }
       });
     }

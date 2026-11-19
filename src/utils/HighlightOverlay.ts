@@ -11,7 +11,16 @@ import {
   buildOverlayColors,
   type OverlayColors
 } from '../createController/clickToEdit/constants.js';
-import { abortableSleep, getDocumentWindow, measure, resolveDocument, waitTwoRafs } from './dom.js';
+import { OVERLAY_ATTRIBUTE } from '../createController/domStamping/constants.js';
+import {
+  type LayoutReadCache,
+  abortableSleep,
+  createLayoutReadCache,
+  getDocumentWindow,
+  measure,
+  resolveDocument,
+  waitTwoRafs
+} from './dom.js';
 import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
 import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
@@ -23,7 +32,30 @@ export interface HighlightOverlayOptions {
   overlayColors?: OverlayColors;
 }
 
+/** The result of a layout read. `null` means that the overlay must be hidden. */
+type OverlayLayout = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  zIndex: string;
+} | null;
+
 export class HighlightOverlay {
+  /**
+   * Sets the position of many overlays.
+   * It reads the layout of all the targets first, then it writes all the
+   * styles. Thus the browser computes the layout only one time.
+   */
+  static showAll(overlays: HighlightOverlay[]): void {
+    const cache = createLayoutReadCache();
+    const layouts = overlays.map((overlay) => overlay.readLayout(cache));
+
+    overlays.forEach((overlay, index) => {
+      overlay.writeLayout(layouts[index]);
+    });
+  }
+
   private overlayElement: HTMLDivElement;
 
   private resizeUnobserve: (() => void) | null = null;
@@ -46,15 +78,13 @@ export class HighlightOverlay {
     document.body.appendChild(this.overlayElement);
 
     const coordinator = getScrollResizeCoordinator(this.document);
-    this.scrollResizeUnsubscribe = coordinator.subscribe(() => {
-      this.updatePosition();
-    });
+    this.scrollResizeUnsubscribe = coordinator.subscribe((cache) => this.deferredUpdate(cache));
 
     const sharedObserver = getSharedResizeObserver(this.window);
     if (sharedObserver) {
-      this.resizeUnobserve = sharedObserver.observe(targetElement, () => {
-        this.updatePosition();
-      });
+      this.resizeUnobserve = sharedObserver.observe(targetElement, (cache) =>
+        this.deferredUpdate(cache)
+      );
     }
   }
 
@@ -131,6 +161,7 @@ export class HighlightOverlay {
     overlay.style.opacity = '1';
     overlay.style.transition = `opacity ${FADE_DELAY}ms ease-in-out`;
     overlay.setAttribute('aria-hidden', 'true');
+    overlay.setAttribute(OVERLAY_ATTRIBUTE, '');
 
     if (withLabel) {
       const label = this.document.createElement('div');
@@ -159,14 +190,34 @@ export class HighlightOverlay {
   }
 
   private updatePosition(): void {
-    const rect = measure(this.targetElement);
-    this.overlayElement.style.zIndex = this.computeOverlayZIndex(this.targetElement);
+    this.writeLayout(this.readLayout());
+  }
 
+  /** Reads the layout now and returns a function that writes the styles. */
+  private deferredUpdate(cache: LayoutReadCache): () => void {
+    const layout = this.readLayout(cache);
+    return () => this.writeLayout(layout);
+  }
+
+  /** Reads the layout of the target. This function does not change the DOM. */
+  private readLayout(cache?: LayoutReadCache): OverlayLayout {
+    const rect = measure(this.targetElement, cache);
+
+    if (!rect) {
+      return null;
+    }
+
+    return { ...rect, zIndex: this.computeOverlayZIndex(this.targetElement, cache) };
+  }
+
+  /** Writes the styles of the overlay. This function does not read the layout. */
+  private writeLayout(rect: OverlayLayout): void {
     if (!rect) {
       this.overlayElement.style.display = 'none';
       return;
     }
 
+    this.overlayElement.style.zIndex = rect.zIndex;
     this.overlayElement.style.display = 'block';
     this.overlayElement.style.top = `${rect.top - DEFAULT_OVERLAY_PADDING}px`;
     this.overlayElement.style.left = `${rect.left - DEFAULT_OVERLAY_PADDING}px`;
@@ -196,24 +247,43 @@ export class HighlightOverlay {
     }
   }
 
-  private computeOverlayZIndex(el: Element): string {
+  private computeOverlayZIndex(el: Element, cache?: LayoutReadCache): string {
     if (!this.window) {
       return '0';
     }
 
-    let node: Element | null = el;
-    let lastNumeric: number | null = null;
-    while (node && node instanceof this.window.Element) {
-      const style = this.window.getComputedStyle(node);
-      const z = style.zIndex;
-      if (z !== 'auto') {
-        const parsed = Number(z);
-        if (Number.isFinite(parsed)) {
-          lastNumeric = parsed;
-        }
-      }
-      node = node.parentElement;
+    const zIndex = this.findStackingZIndex(el, this.window, cache);
+
+    return zIndex !== null ? String(zIndex) : '0';
+  }
+
+  /**
+   * Finds the numeric z-index of the outermost ancestor that has one.
+   * The element itself is included in the search.
+   */
+  private findStackingZIndex(
+    el: Element,
+    win: Window & typeof globalThis,
+    cache?: LayoutReadCache
+  ): number | null {
+    const cached = cache?.stackingZIndex.get(el);
+    if (cached !== undefined) {
+      return cached;
     }
-    return lastNumeric !== null ? String(lastNumeric) : '0';
+
+    const parent = el.parentElement;
+    let result = parent ? this.findStackingZIndex(parent, win, cache) : null;
+
+    if (result === null) {
+      const parsed = Number(win.getComputedStyle(el).zIndex);
+      // `Number('auto')` is not a finite number.
+      if (Number.isFinite(parsed)) {
+        result = parsed;
+      }
+    }
+
+    cache?.stackingZIndex.set(el, result);
+
+    return result;
   }
 }

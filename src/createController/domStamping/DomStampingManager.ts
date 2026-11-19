@@ -13,12 +13,15 @@ import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   GROUP_ATTRIBUTE,
   GROUP_BOUNDARY_ATTRIBUTE,
+  OVERLAY_ATTRIBUTE,
   SOURCE_STAMP_ATTRIBUTE
 } from './constants.js';
 
 export class DomStampingManager {
   private observer: MutationObserver;
   private readonly pendingElementsToStamp = new Set<ParentNode>();
+  /** Tells if the page removed content after the last stamping pass. */
+  private pendingRemoval = false;
   private readonly scheduleStamping = createScheduler(() => this.instantStampPendingElements());
 
   constructor(
@@ -72,16 +75,42 @@ export class DomStampingManager {
         this.pendingElementsToStamp.add((element.parentElement ?? this.root) as ParentNode);
         hasChanges = true;
       } else if (mutation.type === 'childList') {
-        this.pendingElementsToStamp.add(mutation.target as ParentNode);
+        // Only the added nodes can contain new stega data. A removal does not
+        // need a new stamping pass. Do not add `mutation.target` here: when the
+        // target is `<body>`, the pass examines the full document.
         for (const node of mutation.addedNodes) {
           if (
             node.nodeType === Node.ELEMENT_NODE ||
             node.nodeType === Node.DOCUMENT_FRAGMENT_NODE
           ) {
+            // Ignore the overlays that this library adds to the page.
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              (node as Element).hasAttribute(OVERLAY_ATTRIBUTE)
+            ) {
+              continue;
+            }
             this.pendingElementsToStamp.add(node as ParentNode);
+            hasChanges = true;
+          } else if (node.nodeType === Node.TEXT_NODE) {
+            this.pendingElementsToStamp.add(
+              (node.parentElement ?? node.parentNode ?? this.root) as ParentNode
+            );
+            hasChanges = true;
           }
         }
-        hasChanges = true;
+
+        // A removal does not need a stamping pass, but the listeners must
+        // know that the set of stamped elements changed.
+        for (const node of mutation.removedNodes) {
+          if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            !(node as Element).hasAttribute(OVERLAY_ATTRIBUTE)
+          ) {
+            this.pendingRemoval = true;
+            hasChanges = true;
+          }
+        }
       }
     }
 
@@ -91,10 +120,8 @@ export class DomStampingManager {
   }
 
   private instantStampPendingElements(firstStamping = false) {
-    const elementsToStamp =
-      this.pendingElementsToStamp.size === 0
-        ? [this.root]
-        : Array.from(this.pendingElementsToStamp);
+    // Only the first pass examines the full root.
+    const elementsToStamp = firstStamping ? [this.root] : Array.from(this.pendingElementsToStamp);
 
     this.pendingElementsToStamp.clear();
 
@@ -127,7 +154,10 @@ export class DomStampingManager {
       console.warn(message);
     }
 
-    if (summaries.length === 0) {
+    const hadRemoval = this.pendingRemoval;
+    this.pendingRemoval = false;
+
+    if (summaries.length === 0 && !hadRemoval) {
       return;
     }
 
@@ -179,7 +209,7 @@ export class DomStampingManager {
     }
 
     // Second pass: inspect image alts, since they are not part of the text walker.
-    for (const img of element.querySelectorAll<HTMLImageElement>('img[alt]')) {
+    for (const img of this.selfAndDescendants<HTMLImageElement>(element, 'img[alt]')) {
       const alt = img.getAttribute('alt');
 
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
@@ -194,7 +224,7 @@ export class DomStampingManager {
     }
 
     // Third pass: inspect elements with data-datocms-content-link-source attribute
-    for (const el of element.querySelectorAll<HTMLElement>(`[${SOURCE_STAMP_ATTRIBUTE}]`)) {
+    for (const el of this.selfAndDescendants<HTMLElement>(element, `[${SOURCE_STAMP_ATTRIBUTE}]`)) {
       const sourceValue = el.getAttribute(SOURCE_STAMP_ATTRIBUTE);
 
       this.addStampingAttributesTargetAndReturnStrippedValue(sourceValue, el, appliedStamps);
@@ -270,6 +300,20 @@ export class DomStampingManager {
     }
 
     return split.cleaned;
+  }
+
+  /**
+   * Finds the elements that agree with the selector. The result includes the
+   * scope element itself, because `querySelectorAll` only finds descendants.
+   */
+  private selfAndDescendants<T extends Element>(scope: ParentNode, selector: string): T[] {
+    const result = Array.from(scope.querySelectorAll<T>(selector));
+
+    if (scope instanceof Element && scope.matches(selector)) {
+      result.unshift(scope as unknown as T);
+    }
+
+    return result;
   }
 
   /** Log when two stega-encoded payloads map to the same element in a single pass */

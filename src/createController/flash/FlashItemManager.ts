@@ -71,6 +71,8 @@ export class FlashItemManager {
         overlay.fadeIn(index * STAGGER_DELAY, abortController);
         this.overlays.push(overlay);
       });
+
+      HighlightOverlay.showAll(this.overlays);
     } catch (_) {
       // animation cancelled
     }

@@ -70,9 +70,30 @@ export function isEditableElementFocused(document: Document): boolean {
   return active.isContentEditable;
 }
 
-/** Compute the bounding box for the target element, ignoring zero-size or hidden nodes. */
+/**
+ * A cache for one batch of layout reads.
+ * Use one cache for each batch. Do not keep it after the batch, because the
+ * layout can change.
+ */
+export type LayoutReadCache = {
+  /** Tells if an element and all its ancestors are visible. */
+  chainVisible: Map<Element, boolean>;
+  /** The z-index of the outermost ancestor that has a numeric z-index. */
+  stackingZIndex: Map<Element, number | null>;
+};
+
+export function createLayoutReadCache(): LayoutReadCache {
+  return { chainVisible: new Map(), stackingZIndex: new Map() };
+}
+
+/**
+ * Compute the bounding box for the target element, ignoring zero-size or hidden nodes.
+ * This function only reads the layout. It also ignores elements that are fully
+ * out of the viewport, because an overlay for them is not visible.
+ */
 export function measure(
-  el: Element
+  el: Element,
+  cache?: LayoutReadCache
 ): { top: number; left: number; width: number; height: number } | null {
   if (typeof el.getBoundingClientRect !== 'function') {
     return null;
@@ -81,7 +102,10 @@ export function measure(
   if (rect.width === 0 && rect.height === 0) {
     return null;
   }
-  if (!isElementVisible(el as HTMLElement)) {
+  if (!rectIntersectsViewport(el, rect)) {
+    return null;
+  }
+  if (!isElementVisible(el as HTMLElement, cache)) {
     return null;
   }
   return {
@@ -90,6 +114,27 @@ export function measure(
     width: rect.width,
     height: rect.height
   };
+}
+
+function rectIntersectsViewport(el: Element, rect: DOMRect): boolean {
+  const doc = el.ownerDocument;
+  const docWindow = doc?.defaultView;
+
+  if (!doc || !docWindow) {
+    return true;
+  }
+
+  const viewportHeight = docWindow.innerHeight || doc.documentElement.clientHeight;
+  const viewportWidth = docWindow.innerWidth || doc.documentElement.clientWidth;
+
+  // If the viewport size is not known, do not ignore the element.
+  if (!viewportHeight || !viewportWidth) {
+    return true;
+  }
+
+  return (
+    rect.top < viewportHeight && rect.bottom > 0 && rect.left < viewportWidth && rect.right > 0
+  );
 }
 
 export function sleep(ms: number): Promise<void> {
@@ -206,32 +251,36 @@ export async function maybeScrollToNearestTarget(
   await waitUntilScrolledToTarget(best, signal);
 }
 
-export function isElementVisible(el: HTMLElement | null): boolean {
+export function isElementVisible(el: HTMLElement | null, cache?: LayoutReadCache): boolean {
   if (!el) return false;
-
-  const style = window.getComputedStyle(el);
-
-  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-    return false;
-  }
 
   if (el.offsetWidth === 0 && el.offsetHeight === 0) {
     return false;
   }
 
-  return isAncestorVisible(el.parentElement);
+  return isChainVisible(el, cache);
 }
 
-function isAncestorVisible(el: HTMLElement | null): boolean {
+/** Tells if the element and all its ancestors have visible styles. */
+function isChainVisible(el: HTMLElement | null, cache?: LayoutReadCache): boolean {
   if (!el) return true;
+
+  const cached = cache?.chainVisible.get(el);
+  if (cached !== undefined) {
+    return cached;
+  }
 
   const style = window.getComputedStyle(el);
 
-  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-    return false;
-  }
+  const visible =
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    style.opacity !== '0' &&
+    isChainVisible(el.parentElement, cache);
 
-  return isAncestorVisible(el.parentElement);
+  cache?.chainVisible.set(el, visible);
+
+  return visible;
 }
 
 async function waitUntilScrolledToTarget(target: HTMLElement, signal: AbortSignal) {

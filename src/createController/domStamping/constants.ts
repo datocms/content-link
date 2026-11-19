@@ -9,5 +9,7 @@ export const MANUAL_TARGET_STAMP_ATTRIBUTE = 'data-datocms-content-link-url';
 export const GROUP_ATTRIBUTE = 'data-datocms-content-link-group';
 export const GROUP_BOUNDARY_ATTRIBUTE = 'data-datocms-content-link-boundary';
 export const SOURCE_STAMP_ATTRIBUTE = 'data-datocms-content-link-source';
+/** Identifies the overlay elements that this library adds to the page. */
+export const OVERLAY_ATTRIBUTE = 'data-datocms-content-link-overlay';
 
 export const STAMPED_ELEMENTS_SELECTOR = `[${MANUAL_TARGET_STAMP_ATTRIBUTE}], [${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`;
