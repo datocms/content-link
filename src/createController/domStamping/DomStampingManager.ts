@@ -3,7 +3,7 @@
  * Absorbs logic from stamp/index.ts and BrowserController's stamping functionality.
  */
 import { vercelStegaDecode } from '@vercel/stega';
-import { splitStega } from '../../stega/decode.js';
+import { STEGA_REGEXP } from '../../stega/decode.js';
 import { DecodedInfo, isDecodedInfo } from '../../stega/types.js';
 import { createScheduler } from '../../utils/createScheduler.js';
 import { resolveDocument } from '../../utils/dom.js';
@@ -17,9 +17,21 @@ import {
   SOURCE_STAMP_ATTRIBUTE
 } from './constants.js';
 
+/** The elements that one stamping pass found. */
+type FoundInPass = {
+  /** The elements that contain stega data directly. */
+  sources: Set<Element>;
+  /** The elements that got the edit URL. */
+  targets: Set<Element>;
+};
+
+/** The maximum number of decoded segments to keep. */
+const MAX_DECODE_CACHE_SIZE = 5000;
+
 export class DomStampingManager {
   private observer: MutationObserver;
   private readonly pendingElementsToStamp = new Set<ParentNode>();
+  private readonly decodeCache = new Map<string, DecodedInfo | null>();
   /** Tells if the page removed content after the last stamping pass. */
   private pendingRemoval = false;
   private readonly scheduleStamping = createScheduler(() => this.instantStampPendingElements());
@@ -46,6 +58,7 @@ export class DomStampingManager {
   dispose() {
     this.observer.disconnect();
     this.pendingElementsToStamp.clear();
+    this.decodeCache.clear();
 
     const nodes = this.root.querySelectorAll<HTMLElement>(`[${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`);
 
@@ -100,15 +113,33 @@ export class DomStampingManager {
           }
         }
 
-        // A removal does not need a stamping pass, but the listeners must
-        // know that the set of stamped elements changed.
         for (const node of mutation.removedNodes) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            // The parent was possibly stamped because of this text.
+            const parent = mutation.target;
+            if (parent instanceof Element && parent.hasAttribute(AUTOMATIC_STEGA_STAMP_ATTRIBUTE)) {
+              this.pendingElementsToStamp.add(parent);
+              hasChanges = true;
+            }
+            continue;
+          }
+
           if (
-            node.nodeType === Node.ELEMENT_NODE &&
-            !(node as Element).hasAttribute(OVERLAY_ATTRIBUTE)
+            node.nodeType !== Node.ELEMENT_NODE ||
+            (node as Element).hasAttribute(OVERLAY_ATTRIBUTE)
           ) {
-            this.pendingRemoval = true;
-            hasChanges = true;
+            continue;
+          }
+
+          // The listeners must know that the set of stamped elements changed.
+          this.pendingRemoval = true;
+          hasChanges = true;
+
+          // A group that is around the removed element was possibly stamped
+          // because of stega data in the removed element.
+          const group = this.findStampedGroup(mutation.target);
+          if (group && this.containsStegaMark(node as Element)) {
+            this.pendingElementsToStamp.add(group);
           }
         }
       }
@@ -121,15 +152,28 @@ export class DomStampingManager {
 
   private instantStampPendingElements(firstStamping = false) {
     // Only the first pass examines the full root.
-    const elementsToStamp = firstStamping ? [this.root] : Array.from(this.pendingElementsToStamp);
+    const elementsToStamp = firstStamping
+      ? [this.root]
+      : this.withoutNestedElements(this.pendingElementsToStamp);
 
     this.pendingElementsToStamp.clear();
 
     const summaries: StampSummary[] = [];
+    const examined = new Set<ParentNode>();
 
-    for (const elementToStamp of elementsToStamp) {
-      const summary = this.stampElement(elementToStamp);
+    // A pass can find that a group out of its scope is possibly stale. Then
+    // the group is added to this list.
+    for (let index = 0; index < elementsToStamp.length; index++) {
+      const elementToStamp = elementsToStamp[index];
+
+      if (examined.has(elementToStamp)) {
+        continue;
+      }
+      examined.add(elementToStamp);
+
+      const { staleGroups, ...summary } = this.stampElement(elementToStamp);
       summaries.push(summary);
+      elementsToStamp.push(...staleGroups);
     }
 
     const combinedSummary =
@@ -164,18 +208,20 @@ export class DomStampingManager {
     this.onStamp(combinedSummary);
   }
 
-  private stampElement(element: ParentNode): StampSummary {
+  private stampElement(element: ParentNode): StampSummary & { staleGroups: Element[] } {
     const doc = resolveDocument(element);
 
     if (!doc) {
       return {
         appliedStamps: new Map(),
-        scope: element
+        scope: element,
+        staleGroups: []
       };
     }
 
     // Track elements stamped in this pass to detect collisions within the same pass
     const appliedStamps = new Map<Element, string>();
+    const found: FoundInPass = { sources: new Set(), targets: new Set() };
 
     // First pass: walk text nodes and process stega-encoded content
     const walker = doc.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -198,7 +244,8 @@ export class DomStampingManager {
       const cleanValue = this.addStampingAttributesTargetAndReturnStrippedValue(
         value,
         parent,
-        appliedStamps
+        appliedStamps,
+        found
       );
 
       if (this.stripStega && cleanValue !== undefined) {
@@ -215,7 +262,8 @@ export class DomStampingManager {
       const cleanAlt = this.addStampingAttributesTargetAndReturnStrippedValue(
         alt,
         img,
-        appliedStamps
+        appliedStamps,
+        found
       );
 
       if (this.stripStega && cleanAlt !== undefined) {
@@ -227,7 +275,7 @@ export class DomStampingManager {
     for (const el of this.selfAndDescendants<HTMLElement>(element, `[${SOURCE_STAMP_ATTRIBUTE}]`)) {
       const sourceValue = el.getAttribute(SOURCE_STAMP_ATTRIBUTE);
 
-      this.addStampingAttributesTargetAndReturnStrippedValue(sourceValue, el, appliedStamps);
+      this.addStampingAttributesTargetAndReturnStrippedValue(sourceValue, el, appliedStamps, found);
 
       // If stripStega is enabled, clear the source attribute after stamping
       if (this.stripStega) {
@@ -235,36 +283,100 @@ export class DomStampingManager {
       }
     }
 
-    const summary: StampSummary = {
-      appliedStamps: appliedStamps,
-      scope: element
-    };
+    const staleGroups = this.clearStaleStamps(element, found);
 
-    return summary;
+    return {
+      appliedStamps: appliedStamps,
+      scope: element,
+      staleGroups
+    };
+  }
+
+  /**
+   * Removes the stamps of the elements in the scope that have no stega data
+   * now. Returns the groups out of the scope that are possibly stale.
+   */
+  private clearStaleStamps(scope: ParentNode, found: FoundInPass): Element[] {
+    // When `stripStega` is on, the stega data is not in the DOM after the
+    // first pass. Thus it is not possible to know if a stamp is stale.
+    if (this.stripStega) {
+      return [];
+    }
+
+    const staleGroups: Element[] = [];
+
+    for (const el of this.selfAndDescendants(scope, `[${AUTOMATIC_STEGA_STAMP_ATTRIBUTE}]`)) {
+      if (found.sources.has(el)) {
+        continue;
+      }
+
+      el.removeAttribute(AUTOMATIC_STEGA_STAMP_ATTRIBUTE);
+
+      // The stega data of this element was possibly the cause of the stamp
+      // of a group that is out of the scope.
+      const group = this.maybeFindGroup(el);
+      if (group !== el && !scope.contains(group)) {
+        staleGroups.push(group);
+      }
+    }
+
+    for (const el of this.selfAndDescendants(scope, `[${AUTOMATIC_TARGET_STAMP_ATTRIBUTE}]`)) {
+      if (!found.targets.has(el)) {
+        el.removeAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
+      }
+    }
+
+    return staleGroups;
+  }
+
+  /** Finds the stamped group that is around the node, if there is one. */
+  private findStampedGroup(node: Node): Element | null {
+    if (!(node instanceof Element)) {
+      return null;
+    }
+
+    const group = this.maybeFindGroup(node);
+
+    return group.hasAttribute(GROUP_ATTRIBUTE) &&
+      group.hasAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)
+      ? group
+      : null;
+  }
+
+  /** Tells if the element, or an element in it, was a source of stega data. */
+  private containsStegaMark(element: Element): boolean {
+    return (
+      element.hasAttribute(AUTOMATIC_STEGA_STAMP_ATTRIBUTE) ||
+      element.querySelector(`[${AUTOMATIC_STEGA_STAMP_ATTRIBUTE}]`) !== null
+    );
   }
 
   private addStampingAttributesTargetAndReturnStrippedValue(
     value: string | null,
     elementWithStega: Element | null,
-    appliedStamps: Map<Element, string>
+    appliedStamps: Map<Element, string>,
+    found: FoundInPass
   ): string | undefined {
     if (!value || !elementWithStega) {
       return;
     }
 
-    // First, check if there's stega-encoded data (cheap operation)
-    let split;
+    // Find the first stega segment. One search is sufficient here: the
+    // cleaned text is only necessary when `stripStega` is on.
     let decoded;
 
     try {
-      split = splitStega(value);
-      if (!split.encoded) {
+      STEGA_REGEXP.lastIndex = 0;
+      const match = STEGA_REGEXP.exec(value);
+      STEGA_REGEXP.lastIndex = 0;
+
+      if (!match) {
         return undefined;
       }
 
-      decoded = vercelStegaDecode(split.encoded) as DecodedInfo;
+      decoded = this.decode(match[0]);
 
-      if (!isDecodedInfo(decoded)) {
+      if (!decoded) {
         return undefined;
       }
     } catch (error) {
@@ -286,6 +398,9 @@ export class DomStampingManager {
       this.warnCollision(target, existingStamp, elementWithStega, decoded.href);
     }
 
+    found.sources.add(elementWithStega);
+    found.targets.add(target);
+
     // Stamp the attribute if it changed
     const existingEditUrl = target.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE);
 
@@ -299,7 +414,48 @@ export class DomStampingManager {
       elementWithStega.setAttribute(AUTOMATIC_STEGA_STAMP_ATTRIBUTE, '');
     }
 
-    return split.cleaned;
+    return this.stripStega ? value.replace(STEGA_REGEXP, '') : value;
+  }
+
+  /**
+   * Removes the elements that are in one of the other elements. The pass on
+   * the ancestor examines them, thus a second pass is not necessary.
+   */
+  private withoutNestedElements(elements: Set<ParentNode>): ParentNode[] {
+    const result: ParentNode[] = [];
+
+    for (const element of elements) {
+      let ancestor = element.parentNode;
+      while (ancestor && !elements.has(ancestor)) {
+        ancestor = ancestor.parentNode;
+      }
+      if (!ancestor) {
+        result.push(element);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Decodes a stega segment. The decode operation is slow, and a page examines
+   * the same segments again after each change of the DOM, thus keep the results.
+   */
+  private decode(encoded: string): DecodedInfo | null {
+    const cached = this.decodeCache.get(encoded);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const decoded = vercelStegaDecode(encoded);
+    const result = isDecodedInfo(decoded) ? decoded : null;
+
+    if (this.decodeCache.size >= MAX_DECODE_CACHE_SIZE) {
+      this.decodeCache.clear();
+    }
+    this.decodeCache.set(encoded, result);
+
+    return result;
   }
 
   /**

@@ -164,3 +164,76 @@ describe('DOM stamping on mutations', () => {
     controller.dispose();
   });
 });
+
+describe('Flash of all the overlays, with an IntersectionObserver', () => {
+  // jsdom has no IntersectionObserver. This one lets the test say which
+  // elements are in the viewport.
+  class FakeIntersectionObserver {
+    static instances: FakeIntersectionObserver[] = [];
+    observed: Element[] = [];
+    disconnected = false;
+
+    constructor(private readonly callback: IntersectionObserverCallback) {
+      FakeIntersectionObserver.instances.push(this);
+    }
+
+    observe(el: Element) {
+      this.observed.push(el);
+    }
+
+    disconnect() {
+      this.disconnected = true;
+    }
+
+    report(el: Element, isIntersecting: boolean) {
+      this.callback(
+        [{ target: el, isIntersecting } as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver
+      );
+    }
+  }
+
+  const overlayCount = () => document.querySelectorAll(`[${OVERLAY_ATTRIBUTE}]`).length;
+
+  it('makes overlays only for the elements that are in the viewport', async () => {
+    FakeIntersectionObserver.instances = [];
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+
+    document.body.innerHTML = `
+      <p id="a">${encoded('A', 'item1#fieldPath=a')}</p>
+      <p id="b">${encoded('B', 'item1#fieldPath=b')}</p>
+      <p id="c">${encoded('C', 'item1#fieldPath=c')}</p>
+    `;
+    const a = document.getElementById('a') as HTMLElement;
+    const b = document.getElementById('b') as HTMLElement;
+
+    const controller = createController();
+
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame']
+    });
+
+    controller.flashAll();
+    await vi.advanceTimersByTimeAsync(200);
+
+    const observer = FakeIntersectionObserver.instances[0];
+    expect(observer.observed).toHaveLength(3);
+    expect(overlayCount()).toBe(0);
+
+    observer.report(a, true);
+    expect(overlayCount()).toBe(1);
+
+    // The user scrolls: `a` goes out of the viewport and `b` comes in.
+    observer.report(a, false);
+    observer.report(b, true);
+    expect(overlayCount()).toBe(1);
+
+    // The flash ends.
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(overlayCount()).toBe(0);
+    expect(observer.disconnected).toBe(true);
+
+    controller.dispose();
+    vi.unstubAllGlobals();
+  });
+});

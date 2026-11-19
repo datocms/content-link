@@ -4,9 +4,15 @@ import type { OverlayColors } from '../clickToEdit/constants.js';
 import { STAMPED_ELEMENTS_SELECTOR } from '../domStamping/constants.js';
 
 export const STAGGER_DELAY = 10;
+/** With this number of overlays or more, all the overlays come in together. */
+const MAX_STAGGERED_OVERLAYS = 50;
+
+/** Overlays are also made for the elements that are this near to the viewport. */
+const VIEWPORT_MARGIN = '200px';
 
 export class FlashAllManager {
-  private overlays: HighlightOverlay[] = [];
+  private overlays = new Map<HTMLElement, HighlightOverlay>();
+  private viewportObserver: IntersectionObserver | null = null;
   private pendingAnimationAbortController: AbortController | null = null;
   private disposed: boolean = false;
 
@@ -48,15 +54,60 @@ export class FlashAllManager {
         await maybeScrollToNearestTarget(targets, signal);
       }
 
-      const targetsCount = targets.length;
+      // With few overlays, the overlays come in one after the other. The
+      // number that counts is the number of overlays to show, not the
+      // number of editable elements on the page.
+      const addOverlays = (newTargets: HTMLElement[], staggerAllowed: boolean) => {
+        const withStagger = staggerAllowed && newTargets.length < MAX_STAGGERED_OVERLAYS;
 
-      targets.map((target, index) => {
-        const overlay = new HighlightOverlay(target, { overlayColors: this.overlayColors });
-        overlay.fadeIn(targetsCount < 50 ? index * STAGGER_DELAY : 0, abortController);
-        this.overlays.push(overlay);
-      });
+        const newOverlays = newTargets.map((target, index) => {
+          const overlay = new HighlightOverlay(target, { overlayColors: this.overlayColors });
+          overlay.fadeIn(withStagger ? index * STAGGER_DELAY : 0, abortController);
+          this.overlays.set(target, overlay);
+          return overlay;
+        });
 
-      HighlightOverlay.showAll(this.overlays);
+        HighlightOverlay.showAll(newOverlays);
+      };
+
+      if (typeof IntersectionObserver === 'undefined') {
+        addOverlays(targets, true);
+        return;
+      }
+
+      // Make overlays only for the elements in the viewport or near it. A
+      // page can have thousands of editable elements. When the user scrolls,
+      // the observer adds and removes overlays.
+      // The stagger only applies to the first group of elements, and it
+      // starts from the first element in the viewport. Thus the user does
+      // not wait when the viewport is at the end of a long page.
+      let isFirstGroup = true;
+      this.viewportObserver = new IntersectionObserver(
+        (entries) => {
+          const entered: HTMLElement[] = [];
+
+          for (const entry of entries) {
+            const target = entry.target as HTMLElement;
+            const overlay = this.overlays.get(target);
+
+            if (entry.isIntersecting && !overlay) {
+              entered.push(target);
+            } else if (!entry.isIntersecting && overlay) {
+              overlay.cancelPendingAnimation();
+              overlay.dispose();
+              this.overlays.delete(target);
+            }
+          }
+
+          addOverlays(entered, isFirstGroup);
+          isFirstGroup = false;
+        },
+        { rootMargin: VIEWPORT_MARGIN }
+      );
+
+      for (const target of targets) {
+        this.viewportObserver.observe(target);
+      }
     } catch (_) {
       // animation cancelled
     }
@@ -69,13 +120,19 @@ export class FlashAllManager {
 
     const abortController = new AbortController();
 
-    const overlaysCount = this.overlays.length;
+    this.viewportObserver?.disconnect();
+    this.viewportObserver = null;
 
-    this.overlays.map((overlay, index) => {
-      overlay.disposeWithFadeOut(overlaysCount < 50 ? index * STAGGER_DELAY : 0, abortController);
+    const overlays = Array.from(this.overlays.values());
+
+    overlays.forEach((overlay, index) => {
+      overlay.disposeWithFadeOut(
+        overlays.length < MAX_STAGGERED_OVERLAYS ? index * STAGGER_DELAY : 0,
+        abortController
+      );
     });
 
-    this.overlays = [];
+    this.overlays.clear();
   }
 
   dispose() {
@@ -92,10 +149,13 @@ export class FlashAllManager {
   private instantlyDisposeOverlays() {
     this.cancelPendingAnimation();
 
-    this.overlays.forEach((overlay) => {
+    this.viewportObserver?.disconnect();
+    this.viewportObserver = null;
+
+    for (const overlay of this.overlays.values()) {
       overlay.cancelPendingAnimation();
       overlay.dispose();
-    });
-    this.overlays = [];
+    }
+    this.overlays.clear();
   }
 }
