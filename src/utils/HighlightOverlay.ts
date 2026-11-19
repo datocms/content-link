@@ -25,9 +25,24 @@ import { getScrollResizeCoordinator } from './scrollResizeCoordinator.js';
 import { getSharedResizeObserver } from './sharedResizeObserver.js';
 
 const FADE_DELAY = 200;
-// The label sits in the overlay's top-right corner, inside the border: match the
-// border's inner curve there, and round the corner that points into the box.
+// The label is in the top-right corner of the overlay, in the border. Thus
+// the pointer stays on the target when it is on the label, and menus that
+// open on hover stay open. The radius agrees with the inner curve of the border.
 const LABEL_BORDER_RADIUS = `0 calc(${DEFAULT_BORDER_RADIUS} - ${DEFAULT_BORDER_WIDTH}) 0 ${DEFAULT_BORDER_RADIUS}`;
+const BORDER_WIDTH = Number.parseFloat(DEFAULT_BORDER_WIDTH);
+
+const LABEL_TEXT = 'Open in DatoCMS ↗';
+// The label is only shown when the target has sufficient room for it:
+// - The label must not use more than this part of the width of the overlay.
+const MAX_LABEL_WIDTH_RATIO = 0.5;
+// - The label must stay at this distance, in pixels, from the text of the target.
+const LABEL_TEXT_CLEARANCE = 8;
+// The size of the label when the browser cannot measure it.
+const FALLBACK_LABEL_SIZE = { width: 150, height: 24 };
+// The maximum number of text nodes to examine in one target.
+const MAX_TEXT_NODES = 300;
+
+type Box = { top: number; left: number; right: number; bottom: number };
 
 export interface HighlightOverlayOptions {
   onDispose?: () => void;
@@ -42,6 +57,7 @@ type OverlayLayout = {
   width: number;
   height: number;
   zIndex: string;
+  labelFits: boolean;
 } | null;
 
 export class HighlightOverlay {
@@ -60,6 +76,11 @@ export class HighlightOverlay {
   }
 
   private overlayElement: HTMLDivElement;
+  private labelElement: HTMLDivElement | null = null;
+  private labelIsShown = true;
+  private labelSize: { width: number; height: number } | null = null;
+  /** The last result of the label check, and the target size it applies to. */
+  private labelFitCheck: { width: number; height: number; fits: boolean } | null = null;
 
   private resizeUnobserve: (() => void) | null = null;
   private scrollResizeUnsubscribe: (() => void) | null = null;
@@ -166,10 +187,8 @@ export class HighlightOverlay {
 
     if (withLabel) {
       const label = this.document.createElement('div');
-      label.textContent = 'Open in DatoCMS ↗';
+      label.textContent = LABEL_TEXT;
       label.style.position = 'absolute';
-      // Inside the box (top-right corner), so the pointer can reach it without leaving
-      // the target. The overlay has pointer-events: none, so clicks land on the target.
       label.style.top = '0';
       label.style.right = '0';
       label.style.backgroundColor = this.overlayColors.borderColor;
@@ -187,6 +206,7 @@ export class HighlightOverlay {
       label.style.fontStyle = 'normal';
       label.setAttribute('aria-hidden', 'true');
       overlay.appendChild(label);
+      this.labelElement = label;
     }
 
     return overlay;
@@ -210,7 +230,98 @@ export class HighlightOverlay {
       return null;
     }
 
-    return { ...rect, zIndex: this.computeOverlayZIndex(this.targetElement, cache) };
+    return {
+      ...rect,
+      zIndex: this.computeOverlayZIndex(this.targetElement, cache),
+      labelFits: this.labelFits(rect)
+    };
+  }
+
+  /**
+   * Tells if the target has sufficient room for the label. The label must not
+   * use too much of the width of the overlay, and it must not be on the text
+   * of the target or near it. This function only reads the layout.
+   */
+  private labelFits(rect: { top: number; left: number; width: number; height: number }): boolean {
+    if (!this.labelElement) {
+      return false;
+    }
+
+    // The text does not move in the target when the page scrolls. Thus the
+    // result only changes when the size of the target changes.
+    const last = this.labelFitCheck;
+    if (last && last.width === rect.width && last.height === rect.height) {
+      return last.fits;
+    }
+
+    const labelSize = this.readLabelSize(this.labelElement);
+    const overlayWidth = rect.width + DEFAULT_OVERLAY_PADDING * 2;
+    const labelRight = rect.left + rect.width + DEFAULT_OVERLAY_PADDING - BORDER_WIDTH;
+    const labelTop = rect.top - DEFAULT_OVERLAY_PADDING + BORDER_WIDTH;
+
+    const fits =
+      labelSize.width <= overlayWidth * MAX_LABEL_WIDTH_RATIO &&
+      !this.textIntersects({
+        top: labelTop - LABEL_TEXT_CLEARANCE,
+        left: labelRight - labelSize.width - LABEL_TEXT_CLEARANCE,
+        right: labelRight + LABEL_TEXT_CLEARANCE,
+        bottom: labelTop + labelSize.height + LABEL_TEXT_CLEARANCE
+      });
+
+    this.labelFitCheck = { width: rect.width, height: rect.height, fits };
+
+    return fits;
+  }
+
+  private readLabelSize(label: HTMLElement): { width: number; height: number } {
+    if (this.labelSize) {
+      return this.labelSize;
+    }
+
+    // The browser cannot measure the label while it is hidden.
+    if (label.offsetWidth > 0 && label.offsetHeight > 0) {
+      this.labelSize = { width: label.offsetWidth, height: label.offsetHeight };
+      return this.labelSize;
+    }
+
+    return FALLBACK_LABEL_SIZE;
+  }
+
+  /** Tells if some text of the target is in the box. */
+  private textIntersects(box: Box): boolean {
+    const range = this.document.createRange();
+
+    if (typeof range.getClientRects !== 'function') {
+      return false;
+    }
+
+    const walker = this.document.createTreeWalker(this.targetElement, NodeFilter.SHOW_TEXT);
+    let examined = 0;
+
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.nodeValue?.trim()) {
+        continue;
+      }
+
+      if (++examined > MAX_TEXT_NODES) {
+        break;
+      }
+
+      range.selectNodeContents(node);
+
+      for (const textRect of range.getClientRects()) {
+        if (
+          textRect.right > box.left &&
+          textRect.left < box.right &&
+          textRect.bottom > box.top &&
+          textRect.top < box.bottom
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /** Writes the styles of the overlay. This function does not read the layout. */
@@ -227,26 +338,9 @@ export class HighlightOverlay {
     this.overlayElement.style.width = `${rect.width + DEFAULT_OVERLAY_PADDING * 2}px`;
     this.overlayElement.style.height = `${rect.height + DEFAULT_OVERLAY_PADDING * 2}px`;
 
-    if (this.showLabel) {
-      const label = this.overlayElement.firstElementChild as HTMLElement | null;
-      if (label) {
-        const isNarrow = rect.width + DEFAULT_OVERLAY_PADDING * 2 < 150;
-        if (isNarrow) {
-          label.style.top = 'auto';
-          label.style.bottom = `calc(100% + 10px)`;
-          label.style.right = 'auto';
-          label.style.left = '50%';
-          label.style.transform = 'translateX(-50%)';
-          label.style.borderRadius = `${DEFAULT_BORDER_RADIUS}`;
-        } else {
-          label.style.top = '0';
-          label.style.bottom = 'auto';
-          label.style.right = '0';
-          label.style.left = 'auto';
-          label.style.transform = 'none';
-          label.style.borderRadius = LABEL_BORDER_RADIUS;
-        }
-      }
+    if (this.labelElement && rect.labelFits !== this.labelIsShown) {
+      this.labelElement.style.display = rect.labelFits ? 'block' : 'none';
+      this.labelIsShown = rect.labelFits;
     }
   }
 
