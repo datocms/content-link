@@ -4,6 +4,7 @@ import {
   AUTOMATIC_TARGET_STAMP_ATTRIBUTE,
   OVERLAY_ATTRIBUTE
 } from '../src/createController/domStamping/constants.js';
+import { EVENT_STAMPED } from '../src/createController/events/constants.js';
 import { createController } from '../src/index.js';
 
 const { vercelStegaCombine } = stega;
@@ -16,6 +17,7 @@ function encoded(text: string, href: string) {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 afterEach(() => {
+  vi.useRealTimers();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -67,6 +69,98 @@ describe('DOM stamping on mutations', () => {
 
     expect(img.getAttribute(AUTOMATIC_TARGET_STAMP_ATTRIBUTE)).toBe('item3#fieldPath=image');
 
+    controller.dispose();
+  });
+
+  it('does not examine the document again when a hover overlay comes and goes', async () => {
+    document.body.innerHTML = `<main><p id="title" tabindex="0">${encoded('Title', 'item1#fieldPath=title')}</p></main>`;
+
+    const controller = createController();
+    const createTreeWalker = vi.spyOn(document, 'createTreeWalker');
+    const title = document.getElementById('title') as HTMLElement;
+
+    controller.enableClickToEdit();
+
+    title.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(document.querySelectorAll(`[${OVERLAY_ATTRIBUTE}]`)).toHaveLength(1);
+    await flush();
+
+    title.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    expect(document.querySelectorAll(`[${OVERLAY_ATTRIBUTE}]`)).toHaveLength(0);
+    await flush();
+
+    expect(createTreeWalker).not.toHaveBeenCalled();
+
+    controller.dispose();
+  });
+
+  it('does not examine the document again during a flash of all the overlays', async () => {
+    document.body.innerHTML = `
+      <main>
+        <p>${encoded('Title', 'item1#fieldPath=title')}</p>
+        <p>${encoded('Body', 'item1#fieldPath=body')}</p>
+        <p>${encoded('Footer', 'item2#fieldPath=footer')}</p>
+      </main>
+    `;
+
+    const controller = createController();
+    const createTreeWalker = vi.spyOn(document, 'createTreeWalker');
+
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame']
+    });
+
+    controller.flashAll();
+
+    // The overlays are on the page while the flash is in progress.
+    await vi.advanceTimersByTimeAsync(500);
+    expect(document.querySelectorAll(`[${OVERLAY_ATTRIBUTE}]`)).toHaveLength(3);
+
+    // The overlays go away after the flash.
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(document.querySelectorAll(`[${OVERLAY_ATTRIBUTE}]`)).toHaveLength(0);
+
+    expect(createTreeWalker).not.toHaveBeenCalled();
+
+    controller.dispose();
+  });
+
+  it('sends the stamped event when the page removes content', async () => {
+    document.body.innerHTML = `<main><p id="title">${encoded('Title', 'item1#fieldPath=title')}</p></main>`;
+
+    const controller = createController();
+    const onStamped = vi.fn();
+    document.addEventListener(EVENT_STAMPED, onStamped);
+    const createTreeWalker = vi.spyOn(document, 'createTreeWalker');
+
+    document.getElementById('title')?.remove();
+    await flush();
+
+    expect(onStamped).toHaveBeenCalledTimes(1);
+    // A removal does not need a stamping pass.
+    expect(createTreeWalker).not.toHaveBeenCalled();
+
+    document.removeEventListener(EVENT_STAMPED, onStamped);
+    controller.dispose();
+  });
+
+  it('does not send the stamped event when an overlay is removed', async () => {
+    const controller = createController({ silenceWarnings: true });
+
+    const overlay = document.createElement('div');
+    overlay.setAttribute(OVERLAY_ATTRIBUTE, '');
+    document.body.appendChild(overlay);
+    await flush();
+
+    const onStamped = vi.fn();
+    document.addEventListener(EVENT_STAMPED, onStamped);
+
+    overlay.remove();
+    await flush();
+
+    expect(onStamped).not.toHaveBeenCalled();
+
+    document.removeEventListener(EVENT_STAMPED, onStamped);
     controller.dispose();
   });
 });
